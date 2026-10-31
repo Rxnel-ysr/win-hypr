@@ -1,0 +1,7 @@
+[package]
+name = "w11ctl"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+w11-common.workspace = true

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=File Explorer
+GenericName=File Manager
+Comment=Browse files and folders
+Exec=w11-explorer %U
+Icon=system-file-manager
+Terminal=false
+Categories=System;FileTools;FileManager;
+MimeType=inode/directory;
+StartupWMClass=dev.win11hypr.Explorer

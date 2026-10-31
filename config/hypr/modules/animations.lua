@@ -1,0 +1,20 @@
+-- Animations: Fluent motion (decelerate in, accelerate out) -----------------
+hl.config({ animations = { enabled = true } })
+
+hl.curve("fluentDecel", { type = "bezier", points = { { 0.1, 0.9 }, { 0.2, 1.0 } } })
+hl.curve("fluentAccel", { type = "bezier", points = { { 0.7, 0.0 }, { 1.0, 0.5 } } })
+hl.curve("fluentPoint", { type = "bezier", points = { { 0.55, 0.55 }, { 0.0, 1.0 } } })
+hl.curve("linear",      { type = "bezier", points = { { 0, 0 }, { 1, 1 } } })
+
+hl.animation({ leaf = "global",        enabled = true, speed = 6,   bezier = "fluentDecel" })
+hl.animation({ leaf = "windowsIn",     enabled = true, speed = 4.5, bezier = "fluentDecel", style = "popin 92%" })
+hl.animation({ leaf = "windowsOut",    enabled = true, speed = 3,   bezier = "fluentAccel", style = "popin 92%" })
+hl.animation({ leaf = "windowsMove",   enabled = true, speed = 4,   bezier = "fluentPoint" })
+hl.animation({ leaf = "border",        enabled = true, speed = 6,   bezier = "linear" })
+hl.animation({ leaf = "fadeIn",        enabled = true, speed = 3,   bezier = "fluentDecel" })
+hl.animation({ leaf = "fadeOut",       enabled = true, speed = 2.5, bezier = "fluentAccel" })
+hl.animation({ leaf = "layersIn",      enabled = true, speed = 4,   bezier = "fluentDecel", style = "fade" })
+hl.animation({ leaf = "layersOut",     enabled = true, speed = 3,   bezier = "fluentAccel", style = "fade" })
+hl.animation({ leaf = "workspaces",    enabled = true, speed = 4,   bezier = "fluentDecel", style = "slide" })
+hl.animation({ leaf = "specialWorkspaceIn",  enabled = true, speed = 4, bezier = "fluentDecel", style = "slidevert" })
+hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 3, bezier = "fluentAccel", style = "slidevert" })

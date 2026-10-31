@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/w11-common",
+    "crates/w11-taskbar",
+    "crates/w11-start",
+    "crates/w11-flyout",
+    "crates/w11-notify",
+    "crates/w11-explorer",
+    "crates/w11ctl",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+gtk4-layer-shell = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-channel = "2"
+zbus = "5"
+w11-common = { path = "crates/w11-common" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = true
+opt-level = 2
