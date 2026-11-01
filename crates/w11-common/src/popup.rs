@@ -9,6 +9,35 @@ use std::rc::Rc;
 pub const TASKBAR_HEIGHT: i32 = 48;
 /// Gap between the taskbar and a flyout.
 pub const FLYOUT_GAP: i32 = 12;
+const SIGUSR1: i32 = 10; // Linux
+
+fn overlay_pid_file() -> std::path::PathBuf {
+    crate::desktops::runtime_dir().join("overlay.pid")
+}
+
+/// Only ever signal our own flyout processes (guards against PID reuse).
+fn is_shell_popup(pid: u32) -> bool {
+    std::fs::read_to_string(format!("/proc/{pid}/comm"))
+        .map(|c| matches!(c.trim(), "w11-start" | "w11-flyout"))
+        .unwrap_or(false)
+}
+
+/// Close whichever other flyout is open, then mark ourselves as the active one.
+fn claim_overlay() {
+    let me = std::process::id();
+    let path = overlay_pid_file();
+    let old = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| s.trim().parse::<u32>().ok());
+    if let Some(old) = old {
+        if old != me && is_shell_popup(old) {
+            let _ = std::process::Command::new("kill")
+                .args(["-USR1", &old.to_string()])
+                .status();
+        }
+    }
+    let _ = std::fs::write(&path, me.to_string());
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Placement {
@@ -44,6 +73,7 @@ impl Popup {
         match placement {
             Placement::BottomCenter => {
                 window.set_anchor(Edge::Bottom, true);
+                window.set_exclusive_zone(-1);
                 window.set_margin(Edge::Bottom, TASKBAR_HEIGHT + FLYOUT_GAP);
                 window.set_default_size(width, height);
             }
@@ -52,6 +82,7 @@ impl Popup {
                 window.set_anchor(Edge::Right, true);
                 window.set_margin(Edge::Bottom, TASKBAR_HEIGHT + FLYOUT_GAP);
                 window.set_margin(Edge::Right, FLYOUT_GAP);
+                window.set_exclusive_zone(-1);
                 window.set_default_size(width, height);
             }
             Placement::Fullscreen => {
@@ -71,6 +102,7 @@ impl Popup {
                 .application(app)
                 .decorated(false)
                 .build();
+            s.set_opacity(0.01);
             s.add_css_class("w11-window");
             s.init_layer_shell();
             s.set_namespace("w11-scrim");
@@ -113,6 +145,7 @@ impl Popup {
     }
 
     pub fn show(&self) {
+        claim_overlay();
         if let Some(s) = &self.scrim {
             s.present();
         }
@@ -143,12 +176,40 @@ where
     let app = gtk::Application::builder().application_id(app_id).build();
     app.connect_startup(|_| crate::theme::apply());
     let slot: Rc<RefCell<Option<Rc<Popup>>>> = Rc::new(RefCell::new(None));
+    {
+        let slot = slot.clone();
+        let _ = gtk::glib::unix_signal_add_local(SIGUSR1, move || {
+            if let Some(p) = slot.borrow().as_ref() {
+                p.hide();
+            }
+            gtk::glib::ControlFlow::Continue
+        });
+    }
     app.connect_activate(move |app| {
         let existing = slot.borrow().clone();
         let popup = match existing {
             Some(p) => p,
             None => {
                 let p = build(app);
+                let idle: Rc<RefCell<Option<gtk::glib::SourceId>>> = Rc::new(RefCell::new(None));
+                {
+                    let (a, idle) = (app.clone(), idle.clone());
+                    p.window.connect_hide(move |_| {
+                        let a = a.clone();
+                        let id = gtk::glib::timeout_add_seconds_local_once(90, move || a.quit());
+                        *idle.borrow_mut() = Some(id);
+                    });
+                }
+                {
+                    let idle = idle.clone();
+                    p.window.connect_show(move |_| {
+                        if let Some(id) = idle.borrow_mut().take() {
+                            id.remove();
+                        }
+                    });
+                }
+                // -------------------------------------------
+
                 *slot.borrow_mut() = Some(p.clone());
                 std::mem::forget(app.hold());
                 p
@@ -156,6 +217,8 @@ where
         };
         popup.toggle();
     });
-    let prog = std::env::args().next().unwrap_or_else(|| app_id.to_string());
+    let prog = std::env::args()
+        .next()
+        .unwrap_or_else(|| app_id.to_string());
     app.run_with_args(&[prog.as_str()])
 }

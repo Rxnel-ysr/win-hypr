@@ -21,7 +21,7 @@ exec(Win .. " + I",         "gnome-control-center || systemsettings")  -- Settin
 exec(Win .. " + L",         "w11ctl lock")               -- Lock
 exec(Win .. " + D",         "w11ctl show-desktop")       -- Show / restore desktop
 exec(Win .. " + M",         "w11ctl show-desktop")       -- Minimize all
-exec("CTRL + SHIFT + Escape", "xdg-terminal-exec btm || kitty btm || btop")  -- Task Manager
+exec("CTRL + SHIFT + Escape", "xdg-terminal-exec btm || kitty btop")  -- Task Manager
 exec(Win .. " + V",         "~/.config/hypr/scripts/clipboard.sh")           -- Clipboard history
 exec(Win .. " + SHIFT + S", "~/.config/hypr/scripts/screenshot.sh region")   -- Snipping tool
 exec("Print",               "~/.config/hypr/scripts/screenshot.sh full")

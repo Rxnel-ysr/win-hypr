@@ -20,13 +20,16 @@ pub fn path_for(addr: &str) -> PathBuf {
 }
 
 /// Layer-shell surfaces that would end up *in* the screenshot.
-const OVERLAYS: [&str; 5] = ["w11-start", "w11-quick", "w11-calendar", "w11-taskview", "w11-scrim"];
+const OVERLAYS: [&str; 5] = [
+    "w11-start",
+    "w11-quick",
+    "w11-calendar",
+    "w11-taskview",
+    "w11-scrim",
+];
 
 fn overlay_open() -> bool {
-    let Ok(out) = Command::new("hyprctl").args(["-j", "layers"]).output() else {
-        return false;
-    };
-    let s = String::from_utf8_lossy(&out.stdout);
+    let s = String::from_utf8_lossy(&hypr::raw_json("layers")).into_owned();
     OVERLAYS.iter().any(|ns| s.contains(ns))
 }
 
@@ -78,7 +81,9 @@ pub fn gc() {
         .iter()
         .map(|c| c.address.trim_start_matches("0x").to_string())
         .collect();
-    let Ok(rd) = std::fs::read_dir(dir()) else { return };
+    let Ok(rd) = std::fs::read_dir(dir()) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
@@ -96,7 +101,7 @@ pub fn spawn_daemon() {
         hypr::listen_events(tx.clone());
         let ticker = tx.clone();
         std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_secs(8));
+            std::thread::sleep(Duration::from_secs(45));
             if ticker.send_blocking("tick".to_string()).is_err() {
                 break;
             }
@@ -110,7 +115,9 @@ pub fn spawn_daemon() {
                     std::thread::sleep(Duration::from_millis(350));
                     while rx.try_recv().is_ok() {}
                     let stale = match (&last, hypr::active_window()) {
-                        (Some((a, t)), Some(c)) => *a != c.address || t.elapsed() > Duration::from_secs(8),
+                        (Some((a, t)), Some(c)) => {
+                            *a != c.address || t.elapsed() > Duration::from_secs(8)
+                        }
                         _ => true,
                     };
                     if stale {

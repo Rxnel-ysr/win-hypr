@@ -50,7 +50,14 @@ impl Server {
             self.next_id
         };
         let time = glib::real_time() / 1_000_000;
-        let n = StoredNotification { id, app: app_name, summary, body, icon: app_icon, time };
+        let n = StoredNotification {
+            id,
+            app: app_name,
+            summary,
+            body,
+            icon: app_icon,
+            time,
+        };
         let _ = self.tx.send_blocking(Msg::Show(n, expire_timeout));
         id
     }
@@ -60,7 +67,12 @@ impl Server {
     }
 
     fn get_server_information(&self) -> (String, String, String, String) {
-        ("w11-notify".into(), "win11-hypr".into(), env!("CARGO_PKG_VERSION").into(), "1.2".into())
+        (
+            "w11-notify".into(),
+            "win11-hypr".into(),
+            env!("CARGO_PKG_VERSION").into(),
+            "1.2".into(),
+        )
     }
 }
 
@@ -89,6 +101,7 @@ fn build(app: &gtk::Application) {
     window.set_namespace("w11-toast");
     window.set_layer(Layer::Overlay);
     window.set_keyboard_mode(KeyboardMode::None);
+    window.set_exclusive_zone(-1);
     window.set_anchor(Edge::Bottom, true);
     window.set_anchor(Edge::Right, true);
     window.set_margin(Edge::Bottom, TASKBAR_HEIGHT + FLYOUT_GAP);
@@ -152,7 +165,13 @@ fn build(app: &gtk::Application) {
                     let click_widget = card_w.clone();
                     let gesture = gtk::GestureClick::new();
                     gesture.connect_released(move |_, _, _, _| {
-                        dismiss(&click_toasts, &click_stack, &click_window, id, &click_widget);
+                        dismiss(
+                            &click_toasts,
+                            &click_stack,
+                            &click_window,
+                            id,
+                            &click_widget,
+                        );
                     });
                     card_w.add_controller(gesture);
                     glib::timeout_add_local_once(Duration::from_millis(ms), move || {
@@ -178,7 +197,11 @@ fn dismiss(
     widget: &gtk::Widget,
 ) {
     // only remove if this widget is still the live toast for that id (it may have been replaced)
-    let live = toasts.borrow().get(&id).map(|w| w == widget).unwrap_or(false);
+    let live = toasts
+        .borrow()
+        .get(&id)
+        .map(|w| w == widget)
+        .unwrap_or(false);
     if live {
         toasts.borrow_mut().remove(&id);
     }

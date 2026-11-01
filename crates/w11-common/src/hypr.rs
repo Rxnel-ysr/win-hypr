@@ -6,8 +6,10 @@
 
 use serde::Deserialize;
 use std::io::{BufRead, BufReader};
+use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::process::Command;
+use std::time::Duration;
 
 pub const MINIMIZED_WS: &str = "special:minimized";
 
@@ -85,8 +87,7 @@ struct ActiveWorkspace {
 }
 
 fn json<T: for<'de> Deserialize<'de>>(what: &str) -> Option<T> {
-    let out = Command::new("hyprctl").args(["-j", what]).output().ok()?;
-    serde_json::from_slice(&out.stdout).ok()
+    serde_json::from_slice(&raw_json(what)).ok()
 }
 
 /// Per-session scratch file. Lives in `XDG_RUNTIME_DIR` (tmpfs, wiped on logout/reboot) so
@@ -112,7 +113,10 @@ pub fn monitors() -> Vec<Monitor> {
 
 pub fn focused_monitor() -> Option<Monitor> {
     let m = monitors();
-    m.iter().find(|m| m.focused).cloned().or_else(|| m.into_iter().next())
+    m.iter()
+        .find(|m| m.focused)
+        .cloned()
+        .or_else(|| m.into_iter().next())
 }
 
 pub fn active_window() -> Option<Client> {
@@ -141,8 +145,18 @@ pub fn focus(addr: &str) -> bool {
     dispatch(&format!("hl.dsp.focus({{ window = {} }})", win(addr)))
 }
 
+pub fn raise(addr: &str) -> bool {
+    dispatch(&format!(
+        "hl.dsp.window.alter_zorder({{ mode = \"top\", window = {} }})",
+        win(addr)
+    ))
+}
+
 pub fn close(addr: &str) -> bool {
-    dispatch(&format!("hl.dsp.window.close({{ window = {} }})", win(addr)))
+    dispatch(&format!(
+        "hl.dsp.window.close({{ window = {} }})",
+        win(addr)
+    ))
 }
 
 /// Switch to virtual desktop `id`, keeping it on the monitor you are currently using.
@@ -178,7 +192,9 @@ pub fn restore_and_focus(c: &Client) -> bool {
     } else if c.workspace.id > 0 {
         switch_workspace(c.workspace.id);
     }
-    focus(&c.address)
+    let ok = focus(&c.address);
+    raise(&c.address);
+    ok
 }
 
 pub fn set_geometry(addr: &str, x: i64, y: i64, w: i64, h: i64) {
@@ -268,7 +284,9 @@ fn save_geoms(m: &GeomMap) {
 
 /// Snap Layouts: Win+Arrows. Remembers the pre-snap geometry so `restore` works.
 pub fn snap_active(mode: Snap) {
-    let (Some(c), Some(m)) = (active_window(), focused_monitor()) else { return };
+    let (Some(c), Some(m)) = (active_window(), focused_monitor()) else {
+        return;
+    };
     let (ux, uy, uw, uh) = m.usable();
     let (hw, hh) = (uw / 2, uh / 2);
     let (x, y, w, h) = match mode {
@@ -293,7 +311,9 @@ pub fn snap_active(mode: Snap) {
 /// Restore the active window to the geometry it had before snapping/maximising.
 /// Returns false if there was nothing to restore.
 pub fn restore_active() -> bool {
-    let Some(c) = active_window() else { return false };
+    let Some(c) = active_window() else {
+        return false;
+    };
     let mut g = load_geoms();
     if let Some([x, y, w, h]) = g.remove(&c.address) {
         save_geoms(&g);
@@ -328,9 +348,39 @@ pub fn minimize_active() {
 pub fn alt_tab() {
     let mut all = clients();
     all.sort_by_key(|c| c.focus_history_id);
-    if let Some(c) = all.iter().find(|c| c.focus_history_id == 1).or_else(|| all.get(1)) {
+    if let Some(c) = all
+        .iter()
+        .find(|c| c.focus_history_id == 1)
+        .or_else(|| all.get(1))
+    {
         restore_and_focus(c);
     }
+}
+
+fn query(what: &str) -> Option<Vec<u8>> {
+    let rt = std::env::var_os("XDG_RUNTIME_DIR")?;
+    let sig = std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE")?;
+    let path = std::path::Path::new(&rt)
+        .join("hypr")
+        .join(sig)
+        .join(".socket.sock");
+    let mut s = UnixStream::connect(path).ok()?;
+    s.set_read_timeout(Some(Duration::from_millis(800))).ok()?;
+    s.write_all(format!("j/{what}").as_bytes()).ok()?;
+    let mut buf = Vec::new();
+    s.read_to_end(&mut buf).ok()?;
+    Some(buf)
+}
+
+pub fn raw_json(what: &str) -> Vec<u8> {
+    query(what).unwrap_or_else(|| {
+        // fallback: old path
+        Command::new("hyprctl")
+            .args(["-j", what])
+            .output()
+            .map(|o| o.stdout)
+            .unwrap_or_default()
+    })
 }
 
 /// Spawn a background thread that forwards the event name of every Hyprland IPC event.
@@ -343,7 +393,9 @@ pub fn listen_events(tx: async_channel::Sender<String>) {
             return;
         };
         let path = format!("{rt}/hypr/{sig}/.socket2.sock");
-        let Ok(stream) = UnixStream::connect(path) else { return };
+        let Ok(stream) = UnixStream::connect(path) else {
+            return;
+        };
         for line in BufReader::new(stream).lines().map_while(Result::ok) {
             let name = line.split(">>").next().unwrap_or("").to_string();
             if tx.send_blocking(name).is_err() {

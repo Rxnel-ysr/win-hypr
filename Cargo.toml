@@ -25,7 +25,8 @@ zbus = "5"
 w11-common = { path = "crates/w11-common" }
 
 [profile.release]
-lto = "thin"
-codegen-units = 4
+lto = "fat"
 strip = true
-opt-level = 2
+codegen-units = 1
+opt-level = 3
+panic = "abort"

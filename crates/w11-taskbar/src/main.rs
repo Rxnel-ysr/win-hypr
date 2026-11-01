@@ -232,7 +232,7 @@ fn build(app: &gtk::Application) {
     });
     // Safety net in case an event is missed; cheap now because unchanged state is ignored.
     let st = state.clone();
-    glib::timeout_add_seconds_local(5, move || {
+    glib::timeout_add_seconds_local(15, move || {
         refresh_clients(&st);
         glib::ControlFlow::Continue
     });
@@ -252,7 +252,7 @@ fn build(app: &gtk::Application) {
         }
     };
     update_clock();
-    glib::timeout_add_seconds_local(1, move || {
+    glib::timeout_add_seconds_local(10, move || {
         update_clock();
         glib::ControlFlow::Continue
     });
@@ -281,7 +281,7 @@ fn build(app: &gtk::Application) {
         });
     };
     poll_tray();
-    glib::timeout_add_seconds_local(5, move || {
+    glib::timeout_add_seconds_local(10, move || {
         poll_tray();
         glib::ControlFlow::Continue
     });

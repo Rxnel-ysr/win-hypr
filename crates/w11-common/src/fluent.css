@@ -10,6 +10,7 @@
 @define-color text_primary #ffffff;
 @define-color text_secondary rgba(255, 255, 255, 0.78);
 @define-color text_tertiary rgba(255, 255, 255, 0.55);
+@import "taskview.css"
 
 * {
   font-family: "Segoe UI Variable", "Segoe UI", "Selawik", "Inter", "Noto Sans", sans-serif;
@@ -17,9 +18,13 @@
   -gtk-icon-style: symbolic;
 }
 
+window.w11-window,
+window.w11-window.background,
+window.w11-window.csd,
 .w11-window,
 .scrim {
   background: transparent;
+  box-shadow: none;
 }
 
 button {
@@ -295,27 +300,6 @@ calendar.header { border: none; }
 calendar.button { color: @text_primary; }
 calendar:indeterminate { color: @text_tertiary; }
 
-/* --------------------------------------------------------- task view */
-
-.taskview-bg { background: rgba(10, 10, 10, 0.62); }
-.taskview-card {
-  background: @layer_2;
-  border: 1px solid @stroke;
-  border-radius: 8px;
-  padding: 14px;
-  min-width: 260px;
-  min-height: 170px;
-  color: @text_primary;
-}
-.taskview-card:hover { border-color: @accent; background: rgba(60, 60, 60, 0.96); }
-.taskview-title { font-size: 12px; }
-.desktop-chip {
-  border-radius: 6px;
-  padding: 6px 16px;
-  border: 1px solid @stroke;
-  background: @layer_3;
-  color: @text_primary;
-}
 .desktop-chip.current { border-color: @accent; border-bottom-width: 3px; }
 
 /* ---------------------------------------------------------- explorer */

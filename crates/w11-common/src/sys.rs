@@ -42,7 +42,10 @@ pub fn volume() -> (f64, bool) {
 }
 
 pub fn set_volume(v: f64) {
-    spawn(&format!("wpctl set-volume @DEFAULT_AUDIO_SINK@ {:.2}", v.clamp(0.0, 1.0)));
+    spawn(&format!(
+        "wpctl set-volume @DEFAULT_AUDIO_SINK@ {:.2}",
+        v.clamp(0.0, 1.0)
+    ));
 }
 
 pub fn toggle_mute() {
@@ -72,7 +75,10 @@ pub fn brightness() -> Option<f64> {
 }
 
 pub fn set_brightness(pct: f64) {
-    spawn(&format!("brightnessctl set {}%", pct.clamp(1.0, 100.0) as u32));
+    spawn(&format!(
+        "brightnessctl set {}%",
+        pct.clamp(1.0, 100.0) as u32
+    ));
 }
 
 // -------------------------------------------------------------- battery
@@ -118,12 +124,11 @@ pub fn battery_icon(b: Battery) -> String {
 
 // ------------------------------------------------------------- network
 
-pub fn wifi_enabled() -> bool {
-    sh("nmcli radio wifi") == "enabled"
-}
-
 pub fn set_wifi(on: bool) {
-    spawn(&format!("nmcli radio wifi {}", if on { "on" } else { "off" }));
+    spawn(&format!(
+        "nmcli radio wifi {}",
+        if on { "on" } else { "off" }
+    ));
 }
 
 pub fn wifi_ssid() -> Option<String> {
@@ -133,14 +138,54 @@ pub fn wifi_ssid() -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+fn rd(p: &std::path::Path) -> String {
+    std::fs::read_to_string(p)
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+fn iface_up(prefixes: &[&str]) -> bool {
+    std::fs::read_dir("/sys/class/net")
+        .into_iter()
+        .flatten()
+        .flatten()
+        .any(|e| {
+            let n = e.file_name().to_string_lossy().to_string();
+            prefixes.iter().any(|p| n.starts_with(p)) && rd(&e.path().join("operstate")) == "up"
+        })
+}
+
 pub fn has_ethernet() -> bool {
-    sh("nmcli -t -f TYPE,STATE dev").lines().any(|l| l == "ethernet:connected")
+    iface_up(&["en", "eth"])
+}
+
+pub fn wifi_enabled() -> bool {
+    let mut found = false;
+    for e in std::fs::read_dir("/sys/class/rfkill")
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let p = e.path();
+        if rd(&p.join("type")) == "wlan" {
+            found = true;
+            if rd(&p.join("soft")) == "0" && rd(&p.join("hard")) == "0" {
+                return true;
+            }
+        }
+    }
+    if found {
+        false
+    } else {
+        sh("nmcli radio wifi") == "enabled"
+    }
 }
 
 pub fn network_icon() -> &'static str {
     if has_ethernet() {
         "network-wired-symbolic"
-    } else if wifi_ssid().is_some() {
+    } else if iface_up(&["wl"]) {
         "network-wireless-signal-good-symbolic"
     } else if wifi_enabled() {
         "network-wireless-offline-symbolic"
@@ -154,7 +199,10 @@ pub fn bluetooth_enabled() -> bool {
 }
 
 pub fn set_bluetooth(on: bool) {
-    spawn(&format!("bluetoothctl power {}", if on { "on" } else { "off" }));
+    spawn(&format!(
+        "bluetoothctl power {}",
+        if on { "on" } else { "off" }
+    ));
 }
 
 pub fn airplane_mode() -> bool {

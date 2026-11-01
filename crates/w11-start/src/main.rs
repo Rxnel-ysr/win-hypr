@@ -66,7 +66,9 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
         if pinned_count >= 18 {
             break;
         }
-        let Some(info) = apps::by_id(id) else { continue };
+        let Some(info) = apps::by_id(id) else {
+            continue;
+        };
         pins.insert(&pin_tile(&info, hide.clone()), -1);
         pinned_count += 1;
     }
@@ -102,25 +104,31 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
     all_scroll.set_vexpand(true);
     all_scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
     let all_list = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let mut last_letter = String::new();
-    for info in apps::all() {
-        let name = info.name().to_string();
-        let letter = name
-            .chars()
-            .next()
-            .map(|c| c.to_uppercase().to_string())
-            .unwrap_or_default();
-        if letter != last_letter {
-            let l = gtk::Label::new(Some(&letter));
-            l.add_css_class("section-title");
-            l.set_xalign(0.0);
-            l.set_margin_top(10);
-            l.set_margin_start(10);
-            all_list.append(&l);
-            last_letter = letter;
-        }
-        all_list.append(&app_row(&info, hide.clone()));
-    }
+    let all_built = Rc::new(std::cell::Cell::new(false));
+    let fill_all = {
+        let (all_list, hide) = (all_list.clone(), hide.clone());
+        Rc::new(move || {
+            let mut last_letter = String::new();
+            for info in apps::all() {
+                let name = info.name().to_string();
+                let letter = name
+                    .chars()
+                    .next()
+                    .map(|c| c.to_uppercase().to_string())
+                    .unwrap_or_default();
+                if letter != last_letter {
+                    let l = gtk::Label::new(Some(&letter));
+                    l.add_css_class("section-title");
+                    l.set_xalign(0.0);
+                    l.set_margin_top(10);
+                    l.set_margin_start(10);
+                    all_list.append(&l);
+                    last_letter = letter;
+                }
+                all_list.append(&app_row(&info, hide.clone()));
+            }
+        })
+    };
     all_scroll.set_child(Some(&all_list));
     all_page.append(&all_scroll);
     stack.add_named(&all_page, Some("all"));
@@ -133,16 +141,25 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
     stack.add_named(&results_scroll, Some("search"));
 
     {
-        let st = stack.clone();
-        all_btn.connect_clicked(move |_| st.set_visible_child_name("all"));
+        let (st, built, fill) = (stack.clone(), all_built.clone(), fill_all.clone());
+        all_btn.connect_clicked(move |_| {
+            if !built.replace(true) {
+                fill();
+            }
+            st.set_visible_child_name("all");
+        });
         let st = stack.clone();
         back_btn.connect_clicked(move |_| st.set_visible_child_name("home"));
     }
 
     let all_apps = Rc::new(apps::all());
     {
-        let (stack, results, all_apps, hide) =
-            (stack.clone(), results.clone(), all_apps.clone(), hide.clone());
+        let (stack, results, all_apps, hide) = (
+            stack.clone(),
+            results.clone(),
+            all_apps.clone(),
+            hide.clone(),
+        );
         search.connect_search_changed(move |e| {
             let q = e.text().to_lowercase();
             while let Some(c) = results.first_child() {
@@ -210,7 +227,14 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
     user.add_css_class("user-pill");
     let name = sys::user_name();
     let ub = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let avatar = gtk::Label::new(Some(&name.chars().next().unwrap_or('U').to_uppercase().to_string()));
+    let avatar = gtk::Label::new(Some(
+        &name
+            .chars()
+            .next()
+            .unwrap_or('U')
+            .to_uppercase()
+            .to_string(),
+    ));
     avatar.add_css_class("avatar");
     avatar.set_size_request(32, 32);
     ub.append(&avatar);
@@ -342,7 +366,11 @@ fn fill_recommended(flow: &gtk::FlowBox, hide: Rc<dyn Fn()>) {
         b.add_css_class("rec-row");
         let h = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         let ct = file
-            .query_info("standard::icon", gio::FileQueryInfoFlags::NONE, gio::Cancellable::NONE)
+            .query_info(
+                "standard::icon",
+                gio::FileQueryInfoFlags::NONE,
+                gio::Cancellable::NONE,
+            )
             .ok()
             .and_then(|i| i.icon());
         let img = match ct {
@@ -352,7 +380,10 @@ fn fill_recommended(flow: &gtk::FlowBox, hide: Rc<dyn Fn()>) {
         img.set_pixel_size(28);
         let v = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let title = gtk::Label::new(Some(
-            &file.basename().map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
+            &file
+                .basename()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
         ));
         title.add_css_class("rec-title");
         title.set_xalign(0.0);

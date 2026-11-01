@@ -249,7 +249,7 @@ pub fn attach(items: Items, flow: &gtk::FlowBox, pop: &gtk::Popover) {
     let (i, f, p, s) = (items.clone(), flow.clone(), pop.clone(), sig.clone());
     refresh(i, f, p, s);
     let (f, p) = (flow.clone(), pop.clone());
-    glib::timeout_add_seconds_local(3, move || {
+    glib::timeout_add_seconds_local(10, move || {
         refresh(items.clone(), f.clone(), p.clone(), sig.clone());
         glib::ControlFlow::Continue
     });
