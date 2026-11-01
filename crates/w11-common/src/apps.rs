@@ -2,15 +2,30 @@
 
 use gtk::gio;
 use gtk::prelude::*;
+use std::cell::RefCell;
 
-/// Every launchable application, sorted by name.
-pub fn all() -> Vec<gio::AppInfo> {
+thread_local! {
+    static CACHE: RefCell<Option<Vec<gio::AppInfo>>> = const { RefCell::new(None) };
+}
+
+fn load() -> Vec<gio::AppInfo> {
     let mut v: Vec<_> = gio::AppInfo::all()
         .into_iter()
         .filter(|a| a.should_show())
         .collect();
     v.sort_by_key(|a| a.name().to_lowercase());
     v
+}
+
+/// Every launchable application, sorted by name. Cached per thread; call
+/// [`invalidate`] when the set of installed apps changes.
+pub fn all() -> Vec<gio::AppInfo> {
+    CACHE.with(|c| c.borrow_mut().get_or_insert_with(load).clone())
+}
+
+/// Drop the cached application list so the next [`all`] call rescans.
+pub fn invalidate() {
+    CACHE.with(|c| *c.borrow_mut() = None);
 }
 
 pub fn by_id(id: &str) -> Option<gio::AppInfo> {

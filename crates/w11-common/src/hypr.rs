@@ -11,6 +11,9 @@ use std::process::Command;
 
 pub const MINIMIZED_WS: &str = "special:minimized";
 
+/// Number of Windows-style virtual desktops.
+pub const DESKTOPS: i64 = 4;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct WorkspaceRef {
     pub id: i64,
@@ -86,6 +89,15 @@ fn json<T: for<'de> Deserialize<'de>>(what: &str) -> Option<T> {
     serde_json::from_slice(&out.stdout).ok()
 }
 
+/// Per-session scratch file. Lives in `XDG_RUNTIME_DIR` (tmpfs, wiped on logout/reboot) so
+/// saved window addresses never go stale across sessions.
+fn runtime_file(name: &str) -> std::path::PathBuf {
+    std::env::var_os("XDG_RUNTIME_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(crate::config::state_dir)
+        .join(name)
+}
+
 pub fn clients() -> Vec<Client> {
     json::<Vec<Client>>("clients")
         .unwrap_or_default()
@@ -133,8 +145,18 @@ pub fn close(addr: &str) -> bool {
     dispatch(&format!("hl.dsp.window.close({{ window = {} }})", win(addr)))
 }
 
+/// Switch to virtual desktop `id`, keeping it on the monitor you are currently using.
 pub fn switch_workspace(id: i64) -> bool {
-    dispatch(&format!("hl.dsp.focus({{ workspace = {id} }})"))
+    dispatch(&format!(
+        "hl.dsp.focus({{ workspace = {id}, on_current_monitor = true }})"
+    ))
+}
+
+/// Win+Ctrl+Left/Right: previous / next virtual desktop (1..=DESKTOPS, wrapping).
+/// Unlike `e-1`/`e+1` this works even when the neighbouring desktop is still empty.
+pub fn switch_workspace_relative(delta: i64) {
+    let cur = active_workspace_id().unwrap_or(1).clamp(1, DESKTOPS);
+    switch_workspace((cur - 1 + delta).rem_euclid(DESKTOPS) + 1);
 }
 
 /// "Minimise" = park the window on a hidden special workspace.
@@ -160,6 +182,7 @@ pub fn restore_and_focus(c: &Client) -> bool {
 }
 
 pub fn set_geometry(addr: &str, x: i64, y: i64, w: i64, h: i64) {
+    // `relative` defaults to false => exact size / position.
     dispatch(&format!(
         "hl.dsp.window.resize({{ x = {w}, y = {h}, window = {} }})",
         win(addr)
@@ -172,15 +195,22 @@ pub fn set_geometry(addr: &str, x: i64, y: i64, w: i64, h: i64) {
 
 /// Win+D behaviour: minimise everything, or restore what we minimised last time.
 pub fn toggle_show_desktop() {
-    let path = crate::config::state_dir().join("show-desktop.json");
+    let path = runtime_file("w11-show-desktop.json");
+    let all = clients();
+    // Only trust saved addresses that still exist.
     let saved: Vec<String> = std::fs::read(&path)
         .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default();
-    let all = clients();
+        .and_then(|b| serde_json::from_slice::<Vec<String>>(&b).ok())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|a| all.iter().any(|c| &c.address == a))
+        .collect();
     if saved.is_empty() {
-        let visible: Vec<&Client> = all.iter().filter(|c| !c.minimized()).collect();
-        let addrs: Vec<String> = visible.iter().map(|c| c.address.clone()).collect();
+        let addrs: Vec<String> = all
+            .iter()
+            .filter(|c| !c.minimized())
+            .map(|c| c.address.clone())
+            .collect();
         for a in &addrs {
             minimize(a);
         }
@@ -220,7 +250,7 @@ impl Snap {
 }
 
 fn geom_file() -> std::path::PathBuf {
-    crate::config::state_dir().join("restore-geometry.json")
+    runtime_file("w11-restore-geometry.json")
 }
 
 type GeomMap = std::collections::HashMap<String, [i64; 4]>;
@@ -251,6 +281,9 @@ pub fn snap_active(mode: Snap) {
         Snap::Maximize => (ux, uy, uw, uh),
     };
     let mut g = load_geoms();
+    // Forget windows that no longer exist so the map can't grow forever.
+    let live = clients();
+    g.retain(|addr, _| live.iter().any(|l| &l.address == addr));
     g.entry(c.address.clone())
         .or_insert([c.at[0], c.at[1], c.size[0], c.size[1]]);
     save_geoms(&g);
@@ -354,5 +387,13 @@ mod tests {
     fn snap_parse() {
         assert_eq!(Snap::parse("top-left"), Some(Snap::TopLeft));
         assert_eq!(Snap::parse("nope"), None);
+    }
+
+    #[test]
+    fn desktop_wraparound() {
+        let next = |cur: i64, d: i64| (cur - 1 + d).rem_euclid(DESKTOPS) + 1;
+        assert_eq!(next(4, 1), 1);
+        assert_eq!(next(1, -1), 4);
+        assert_eq!(next(2, 1), 3);
     }
 }

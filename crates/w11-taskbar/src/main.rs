@@ -5,8 +5,9 @@ use gtk::gio;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::time::Duration;
 use w11_common::config::Config;
 use w11_common::popup::TASKBAR_HEIGHT;
 use w11_common::{apps, hypr, sys, theme};
@@ -16,6 +17,8 @@ struct State {
     clients: Vec<hypr::Client>,
     active: String,
     cfg: Config,
+    /// Fingerprint of what the app strip currently shows; we only rebuild when it changes.
+    sig: String,
 }
 
 type Shared = Rc<RefCell<State>>;
@@ -33,6 +36,11 @@ fn build(app: &gtk::Application) {
     if !app.windows().is_empty() {
         return;
     }
+    // Keep the process alive and re-scan installed apps when something is (un)installed.
+    let app_monitor = gio::AppInfoMonitor::get();
+    app_monitor.connect_changed(|_| apps::invalidate());
+    std::mem::forget(app_monitor);
+
     let window = gtk::ApplicationWindow::builder()
         .application(app)
         .decorated(false)
@@ -172,16 +180,18 @@ fn build(app: &gtk::Application) {
         clients: Vec::new(),
         active: String::new(),
         cfg,
+        sig: String::new(),
     }));
     refresh_clients(&state);
 
-    // Hyprland events -> refresh the app strip
+    // Hyprland events -> refresh the app strip (debounced: bursts of events = one refresh)
     let (tx, rx) = async_channel::unbounded::<String>();
     hypr::listen_events(tx);
     let st = state.clone();
+    let pending = Rc::new(Cell::new(false));
     glib::spawn_future_local(async move {
         while let Ok(ev) = rx.recv().await {
-            if matches!(
+            let relevant = matches!(
                 ev.as_str(),
                 "openwindow"
                     | "closewindow"
@@ -194,13 +204,19 @@ fn build(app: &gtk::Application) {
                     | "workspace"
                     | "workspacev2"
                     | "focusedmon"
-            ) {
-                refresh_clients(&st);
+            );
+            if relevant && !pending.replace(true) {
+                let (st, pending) = (st.clone(), pending.clone());
+                glib::timeout_add_local_once(Duration::from_millis(40), move || {
+                    pending.set(false);
+                    refresh_clients(&st);
+                });
             }
         }
     });
+    // Safety net in case an event is missed; cheap now because unchanged state is ignored.
     let st = state.clone();
-    glib::timeout_add_seconds_local(3, move || {
+    glib::timeout_add_seconds_local(5, move || {
         refresh_clients(&st);
         glib::ControlFlow::Continue
     });
@@ -296,15 +312,45 @@ fn icon_button(child: &impl IsA<gtk::Widget>, tip: &str) -> gtk::Button {
     b
 }
 
-fn refresh_clients(state: &Shared) {
-    let clients = hypr::clients();
-    let active = hypr::active_window().map(|c| c.address).unwrap_or_default();
-    {
-        let mut s = state.borrow_mut();
-        s.clients = clients;
-        s.active = active;
+/// What the app strip depends on. Titles are deliberately left out: terminals and browsers
+/// change them constantly and that must not tear down the buttons under the cursor.
+fn signature(clients: &[hypr::Client], active: &str) -> String {
+    let mut s = String::from(active);
+    for w in clients {
+        s.push_str(&format!(
+            "|{}:{}:{}:{}",
+            w.address, w.class, w.workspace.id, w.focus_history_id
+        ));
     }
-    rebuild(state);
+    s
+}
+
+/// Query Hyprland off the UI thread, and only rebuild the strip if something changed.
+fn refresh_clients(state: &Shared) {
+    let st = state.clone();
+    glib::spawn_future_local(async move {
+        let Ok((clients, active)) = gio::spawn_blocking(|| {
+            (
+                hypr::clients(),
+                hypr::active_window().map(|c| c.address).unwrap_or_default(),
+            )
+        })
+        .await
+        else {
+            return;
+        };
+        let sig = signature(&clients, &active);
+        {
+            let mut s = st.borrow_mut();
+            if s.sig == sig {
+                return;
+            }
+            s.sig = sig;
+            s.clients = clients;
+            s.active = active;
+        }
+        rebuild(&st);
+    });
 }
 
 fn rebuild(state: &Shared) {

@@ -52,10 +52,12 @@ hl.bind(Win .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(Win .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 -- ---------------------------------------------------------------- Virtual desktops
-hl.bind(Win .. " + CTRL + Left",  hl.dsp.focus({ workspace = "e-1" }))
-hl.bind(Win .. " + CTRL + Right", hl.dsp.focus({ workspace = "e+1" }))
+-- Handled by w11ctl so they wrap 1..4 and work even when the next desktop is empty
+-- (Hyprland's "e-1"/"e+1" only visits desktops that already contain windows).
+exec(Win .. " + CTRL + Left",  "w11ctl workspace prev")
+exec(Win .. " + CTRL + Right", "w11ctl workspace next")
 for i = 1, 4 do
-  hl.bind(Win .. " + CTRL + " .. i,           hl.dsp.focus({ workspace = i }))
+  hl.bind(Win .. " + CTRL + " .. i,           hl.dsp.focus({ workspace = i, on_current_monitor = true }))
   hl.bind(Win .. " + CTRL + SHIFT + " .. i,   hl.dsp.window.move({ workspace = i }))
 end
 
