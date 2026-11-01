@@ -10,7 +10,8 @@ use std::rc::Rc;
 use std::time::Duration;
 use w11_common::config::Config;
 use w11_common::popup::TASKBAR_HEIGHT;
-use w11_common::{apps, hypr, sys, theme};
+use w11_common::{apps, hypr, sys, theme, thumbs};
+mod tray;
 
 struct State {
     apps_box: gtk::Box,
@@ -122,9 +123,23 @@ fn build(app: &gtk::Application) {
     let end = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     end.set_valign(gtk::Align::Center);
 
+    let tray_items = tray::start();
     let chevron = gtk::Button::new();
     chevron.add_css_class("tray-button");
     chevron.set_child(Some(&gtk::Image::from_icon_name("pan-up-symbolic")));
+    let tray_pop = gtk::Popover::new();
+    tray_pop.set_has_arrow(false);
+    tray_pop.set_position(gtk::PositionType::Top);
+    tray_pop.set_parent(&chevron);
+    let tray_flow = gtk::FlowBox::new();
+    tray_flow.set_selection_mode(gtk::SelectionMode::None);
+    tray_flow.set_max_children_per_line(5);
+    tray_pop.set_child(Some(&tray_flow));
+    tray::attach(tray_items, &tray_flow, &tray_pop);
+    {
+        let p = tray_pop.clone();
+        chevron.connect_clicked(move |_| p.popup());
+    }
     end.append(&chevron);
 
     // network / volume / battery cluster -> quick settings
@@ -173,6 +188,7 @@ fn build(app: &gtk::Application) {
 
     window.set_child(Some(&root));
     window.present();
+    thumbs::spawn_daemon();
 
     // ------------------------------------------------------------- state
     let state: Shared = Rc::new(RefCell::new(State {
@@ -356,7 +372,12 @@ fn refresh_clients(state: &Shared) {
 fn rebuild(state: &Shared) {
     let (apps_box, clients, active, cfg) = {
         let s = state.borrow();
-        (s.apps_box.clone(), s.clients.clone(), s.active.clone(), s.cfg.clone())
+        (
+            s.apps_box.clone(),
+            s.clients.clone(),
+            s.active.clone(),
+            s.cfg.clone(),
+        )
     };
     while let Some(c) = apps_box.first_child() {
         apps_box.remove(&c);
@@ -366,14 +387,23 @@ fn rebuild(state: &Shared) {
 
     // pinned apps first
     for id in &cfg.pinned {
-        let Some(info) = apps::by_id(id) else { continue };
+        let Some(info) = apps::by_id(id) else {
+            continue;
+        };
         let wins: Vec<hypr::Client> = clients
             .iter()
             .filter(|c| apps::class_matches(&info, &c.class))
             .cloned()
             .collect();
         used.extend(wins.iter().map(|w| w.address.clone()));
-        apps_box.append(&app_button(state, Some(info), String::new(), wins, &active, true));
+        apps_box.append(&app_button(
+            state,
+            Some(info),
+            String::new(),
+            wins,
+            &active,
+            true,
+        ));
     }
 
     // then running apps that aren't pinned, grouped by class (oldest focus first)
@@ -498,7 +528,11 @@ fn app_button(
         }
         if let Some(i) = &info {
             let id = apps::desktop_id(i);
-            let b = entry(if pinned { "Unpin from taskbar" } else { "Pin to taskbar" });
+            let b = entry(if pinned {
+                "Unpin from taskbar"
+            } else {
+                "Pin to taskbar"
+            });
             let (p, st) = (popover.clone(), state.clone());
             b.connect_clicked(move |_| {
                 p.popdown();
@@ -517,7 +551,11 @@ fn app_button(
             menu.append(&b);
         }
         if !wins.is_empty() {
-            let b = entry(if wins.len() > 1 { "Close all windows" } else { "Close window" });
+            let b = entry(if wins.len() > 1 {
+                "Close all windows"
+            } else {
+                "Close window"
+            });
             let (p, addrs) = (
                 popover.clone(),
                 wins.iter().map(|w| w.address.clone()).collect::<Vec<_>>(),

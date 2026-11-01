@@ -4,19 +4,21 @@
 //! * calendar  – notification center + month calendar
 //! * taskview  – full-screen window switcher with virtual desktops
 
+mod taskview;
+
 use gtk::glib;
 use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use w11_common::config::{self, StoredNotification};
 use w11_common::popup::{run_popup, Placement, Popup};
-use w11_common::{apps, hypr, sys};
+use w11_common::sys;
 
 fn main() -> glib::ExitCode {
     match std::env::args().nth(1).as_deref() {
         Some("quick") => run_popup("dev.win11hypr.QuickSettings", quick),
         Some("calendar") => run_popup("dev.win11hypr.Calendar", calendar),
-        Some("taskview") => run_popup("dev.win11hypr.TaskView", taskview),
+        Some("taskview") => run_popup("dev.win11hypr.TaskView", taskview::build),
         _ => {
             eprintln!("usage: w11-flyout <quick|calendar|taskview>");
             glib::ExitCode::FAILURE
@@ -61,7 +63,12 @@ fn make_tile(
     h.append(&v);
     b.set_child(Some(&h));
     b.set_hexpand(true);
-    let tile = Rc::new(Tile { button: b.clone(), caption: cap, get, caption_fn });
+    let tile = Rc::new(Tile {
+        button: b.clone(),
+        caption: cap,
+        get,
+        caption_fn,
+    });
     let t = tile.clone();
     b.connect_clicked(move |btn| {
         let on = !btn.has_css_class("on");
@@ -94,7 +101,12 @@ impl Tile {
     }
 }
 
-fn slider_row(icon: &gtk::Image, max: f64, value: f64, on_change: impl Fn(f64) + 'static) -> (gtk::Box, gtk::Scale) {
+fn slider_row(
+    icon: &gtk::Image,
+    max: f64,
+    value: f64,
+    on_change: impl Fn(f64) + 'static,
+) -> (gtk::Box, gtk::Scale) {
     let row = gtk::Box::new(gtk::Orientation::Horizontal, 14);
     icon.set_pixel_size(18);
     let scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, max, 1.0);
@@ -182,7 +194,11 @@ fn quick(app: &gtk::Application) -> Rc<Popup> {
             config::dnd_enabled,
             config::set_dnd,
             Some(|| {
-                if config::dnd_enabled() { "Do not disturb".into() } else { "Off".into() }
+                if config::dnd_enabled() {
+                    "Do not disturb".into()
+                } else {
+                    "Off".into()
+                }
             }),
         ),
     ];
@@ -194,7 +210,12 @@ fn quick(app: &gtk::Application) -> Rc<Popup> {
     // brightness
     let bright_icon = gtk::Image::from_icon_name("display-brightness-symbolic");
     let bright = sys::brightness();
-    let (brow, bscale) = slider_row(&bright_icon, 100.0, bright.unwrap_or(100.0), sys::set_brightness);
+    let (brow, bscale) = slider_row(
+        &bright_icon,
+        100.0,
+        bright.unwrap_or(100.0),
+        sys::set_brightness,
+    );
     brow.set_visible(bright.is_some());
     body.append(&brow);
 
@@ -406,126 +427,4 @@ fn notif_card(n: &StoredNotification) -> gtk::Box {
     card.append(&icon);
     card.append(&v);
     card
-}
-
-// =====================================================================
-// Task View
-// =====================================================================
-
-fn taskview(app: &gtk::Application) -> Rc<Popup> {
-    let popup = Popup::new(app, "w11-taskview", 0, 0, Placement::Fullscreen);
-    popup.window.add_css_class("taskview-bg");
-
-    let root = gtk::Box::new(gtk::Orientation::Vertical, 24);
-    root.set_margin_top(48);
-    root.set_margin_bottom(48);
-    root.set_margin_start(64);
-    root.set_margin_end(64);
-
-    let chips = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    chips.set_halign(gtk::Align::Center);
-    root.append(&chips);
-
-    let scroll = gtk::ScrolledWindow::new();
-    scroll.set_vexpand(true);
-    scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-    let flow = gtk::FlowBox::new();
-    flow.set_selection_mode(gtk::SelectionMode::None);
-    flow.set_homogeneous(true);
-    flow.set_column_spacing(20);
-    flow.set_row_spacing(20);
-    flow.set_halign(gtk::Align::Center);
-    flow.set_valign(gtk::Align::Start);
-    flow.set_max_children_per_line(5);
-    scroll.set_child(Some(&flow));
-    root.append(&scroll);
-
-    // clicking empty space closes
-    let bg = gtk::GestureClick::new();
-    let p = popup.clone();
-    bg.connect_released(move |g, _, x, y| {
-        if let Some(w) = g.widget() {
-            if w.pick(x, y, gtk::PickFlags::DEFAULT).map(|p| p == w).unwrap_or(false) {
-                p.hide();
-            }
-        }
-    });
-    root.add_controller(bg);
-    popup.window.set_child(Some(&root));
-
-    let populate = {
-        let (flow, chips, popup) = (flow.clone(), chips.clone(), popup.clone());
-        move || {
-            while let Some(c) = flow.first_child() {
-                flow.remove(&c);
-            }
-            while let Some(c) = chips.first_child() {
-                chips.remove(&c);
-            }
-            let current = hypr::active_workspace_id().unwrap_or(1);
-            for id in 1..=4i64 {
-                let b = gtk::Button::with_label(&format!("Desktop {id}"));
-                b.add_css_class("desktop-chip");
-                if id == current {
-                    b.add_css_class("current");
-                }
-                let p = popup.clone();
-                b.connect_clicked(move |_| {
-                    p.hide();
-                    std::thread::spawn(move || {
-                        hypr::switch_workspace(id);
-                    });
-                });
-                chips.append(&b);
-            }
-            let mut clients = hypr::clients();
-            clients.sort_by_key(|c| c.focus_history_id);
-            for c in clients {
-                let b = gtk::Button::new();
-                b.add_css_class("taskview-card");
-                let v = gtk::Box::new(gtk::Orientation::Vertical, 10);
-                let top = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-                let img = match apps::for_class(&c.class) {
-                    Some(i) => gtk::Image::from_gicon(&apps::icon_of(&i)),
-                    None => gtk::Image::from_icon_name("application-x-executable"),
-                };
-                img.set_pixel_size(20);
-                let t = gtk::Label::new(Some(if c.title.is_empty() { &c.class } else { &c.title }));
-                t.add_css_class("taskview-title");
-                t.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                t.set_max_width_chars(28);
-                t.set_xalign(0.0);
-                top.append(&img);
-                top.append(&t);
-                let big = gtk::Image::from_gicon(
-                    &apps::for_class(&c.class)
-                        .map(|i| apps::icon_of(&i))
-                        .unwrap_or_else(|| gtk::gio::ThemedIcon::new("application-x-executable").upcast()),
-                );
-                big.set_pixel_size(72);
-                big.set_vexpand(true);
-                v.append(&top);
-                v.append(&big);
-                let ws = gtk::Label::new(Some(&if c.minimized() {
-                    "Minimized".to_string()
-                } else {
-                    format!("Desktop {}", c.workspace.id)
-                }));
-                ws.add_css_class("rec-sub");
-                v.append(&ws);
-                b.set_child(Some(&v));
-                let (p, cc) = (popup.clone(), c.clone());
-                b.connect_clicked(move |_| {
-                    p.hide();
-                    let cc = cc.clone();
-                    std::thread::spawn(move || {
-                        hypr::restore_and_focus(&cc);
-                    });
-                });
-                flow.insert(&b, -1);
-            }
-        }
-    };
-    popup.window.connect_show(move |_| populate());
-    popup
 }

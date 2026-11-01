@@ -5,7 +5,7 @@
 //!   w11ctl workspace <n|next|prev>
 //!   w11ctl lock | sleep | shutdown | restart | sign-out
 
-use w11_common::{hypr, sys};
+use w11_common::{desktops, hypr, sys};
 
 fn usage() -> ! {
     eprintln!(
@@ -18,7 +18,9 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("snap") => {
-            let Some(mode) = args.get(1).and_then(|s| hypr::Snap::parse(s)) else { usage() };
+            let Some(mode) = args.get(1).and_then(|s| hypr::Snap::parse(s)) else {
+                usage()
+            };
             hypr::snap_active(mode);
         }
         Some("restore") => {
@@ -37,12 +39,10 @@ fn main() {
             }
         }
         Some("workspace") => match args.get(1).map(String::as_str) {
-            Some("next") => hypr::switch_workspace_relative(1),
-            Some("prev") => hypr::switch_workspace_relative(-1),
+            Some("next") => desktops::switch_relative(1),
+            Some("prev") => desktops::switch_relative(-1),
             Some(s) => match s.parse::<i64>() {
-                Ok(n) => {
-                    hypr::switch_workspace(n);
-                }
+                Ok(n) => desktops::goto(n),
                 Err(_) => usage(),
             },
             None => usage(),
