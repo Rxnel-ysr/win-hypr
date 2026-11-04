@@ -13,7 +13,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("w11-taskbar") -- taskbar, tray, clock
 
     -- Wallpaper (wpaperd is Rust; swaybg is the fallback)
-    hl.exec_cmd("command -v wpaperd >/dev/null && wpaperd || swaybg -m fill -i ~/Pictures/Wallpapers/bloom.jpg")
+    -- hl.exec_cmd("command -v f >/dev/null && wpaperd || swaybg -m fill -i ~/Pictures/Wallpapers/bloom.jpg")
+    hl.exec_cmd([[sh -c 'wp=$(cat ~/.config/win11-hypr/wallpaper.txt 2>/dev/null); [ -f "$wp" ] || wp=$HOME/Pictures/Wallpapers/bloom.jpg; exec swaybg -m fill -i "$wp"']])
 
     -- Clipboard history (Win+V) and idle/lock
     hl.exec_cmd("wl-paste --type text --watch cliphist store")

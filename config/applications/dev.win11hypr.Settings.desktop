@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Comment=Change system settings
+Exec=w11-settings
+Icon=preferences-system
+Terminal=false
+Categories=Settings;
+StartupWMClass=dev.win11hypr.Settings

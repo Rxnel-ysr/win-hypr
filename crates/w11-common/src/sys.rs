@@ -6,7 +6,7 @@ use std::time::Instant;
 
 /// Keep in sync with config/hypr/modules/binds.lua.
 pub const TERMINAL: &str = "foot";
-pub const SETTINGS_CMD: &str = "foot -e nmtui";
+pub const SETTINGS_CMD: &str = "w11-settings";
 
 /// Cache for bluetooth_enabled(): (when checked, value)
 static BT: Mutex<Option<(Instant, bool)>> = Mutex::new(None);

@@ -27,7 +27,7 @@ cargo build --release --workspace
 
 say "Installing binaries to $BIN"
 mkdir -p "$BIN"
-for b in w11-taskbar w11-start w11-flyout w11-notify w11-explorer w11ctl; do
+for b in w11-taskbar w11-start w11-flyout w11-notify w11-explorer w11-settings w11ctl; do
   install -m755 "target/release/$b" "$BIN/$b"
 done
 

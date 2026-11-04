@@ -16,6 +16,7 @@ crates/
   w11-notify    org.freedesktop.Notifications daemon: toasts + history + Focus assist
   w11-explorer  File Explorer: nav pane, details view, command bar, copy/cut/paste/rename/trash
   w11ctl        Snap layouts, minimise/restore, show desktop, Alt+Tab, lock/power verbs
+  w11-setting   Display, Wallpaper, Bluetooth, Network and etc, Win+I
 ```
 
 ## What is Rust, what isn't
@@ -32,7 +33,7 @@ Ram usage
 
 ## Dependencies
 Build: Rust ≥ 1.87, `gtk4`, `gtk4-layer-shell` (≥ 1.0), `pkg-config`.
-Runtime: `wireplumber` (wpctl), `brightnessctl`, `networkmanager` (nmcli), `bluez-utils`, `power-profiles-daemon`, `playerctl`, `hyprsunset`, `hyprlock`, `hypridle`, `cliphist`, `wl-clipboard`, `slurp`, `grim` (or `wayshot`), `curl` (weather).
+Runtime: pacman-contrib (update check), `wireplumber` (wpctl), `brightnessctl`, `networkmanager` (nmcli), `bluez-utils`, `power-profiles-daemon`, `playerctl`, `hyprsunset`, `hyprlock`, `hypridle`, `cliphist`, `wl-clipboard`, `slurp`, `grim` (or `wayshot`), `curl` (weather).
 Look: `Fluent-icon-theme` (icon theme name `Fluent-dark`), Selawik or Inter font, Bibata or Windows cursor.
 Disable other notification daemons (mako/dunst) — `w11-notify` owns the D-Bus name.
 
@@ -47,4 +48,4 @@ Win (tap) Start · Win+S/R search/run · Win+E Explorer · Win+D show desktop ·
 Verified here: the whole workspace compiles with zero warnings (GTK 4.14, gtk4-layer-shell 1.0.4, Rust 1.91), unit tests for IPC parsing and snap geometry pass, the Fluent CSS parses with 0 errors, the File Explorer runs without panics under a virtual display, and the Lua config executes against a mock `hl` API.
 **Not verified:** a live Hyprland ≥ 0.55 session — I had no compositor available. The Lua API usage follows the 0.55/0.56 docs; rules whose field names I couldn't confirm (`center`, `size`, layer-rule `blur`/`ignore_alpha`) are wrapped in `pcall` so a wrong name logs a message instead of breaking the config. Expect some tuning on first run.
 
-Not implemented (yet): a full Settings app, Widgets board, window thumbnails in Task View/taskbar hover, Snap Layouts hover flyout, Alt+Tab visual switcher, system-tray (StatusNotifier) icons, Wi-Fi/Bluetooth device lists, per-monitor taskbars, light theme, Explorer tabs/thumbnails/context-menu extensions.
+Not implemented (yet): Widgets board, window thumbnails in Task View/taskbar hover, Snap Layouts hover flyout, Alt+Tab visual switcher, system-tray (StatusNotifier) icons, Wi-Fi/Bluetooth device lists, per-monitor taskbars, light theme, Explorer tabs/thumbnails/context-menu extensions.

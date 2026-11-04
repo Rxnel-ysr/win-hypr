@@ -28,6 +28,12 @@ try(hl.window_rule, {
   size  = "1100 680",
 })
 
+try(hl.window_rule, {
+    name = "w11-settings-size",
+    match = { class = "dev.win11hypr.Settings" },
+    size = "1100 720"
+})
+
 -- Small utility dialogs stay small and centred
 try(hl.window_rule, {
   name  = "w11-dialogs",

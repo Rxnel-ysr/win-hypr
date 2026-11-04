@@ -1,0 +1,9 @@
+[package]
+name = "w11-settings"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gtk.workspace = true
+w11-common.workspace = true
+libc = "0.2"

@@ -1,7 +1,6 @@
 -- Keybindings: the Windows 11 shortcut set ----------------------------------
 local Win = "SUPER"
-local TERMINAL = "foot"
-local SETTINGS_CMD = TERMINAL .. " -e nmtui"
+local SETTINGS_CMD = "w11-settings"
 local function exec(keys, cmd, opts)
   hl.bind(keys, hl.dsp.exec_cmd(cmd), opts)
 end

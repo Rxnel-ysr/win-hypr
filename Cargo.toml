@@ -8,6 +8,7 @@ members = [
     "crates/w11-notify",
     "crates/w11-explorer",
     "crates/w11ctl",
+    "crates/w11-settings"
 ]
 
 [workspace.package]

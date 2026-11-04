@@ -1230,6 +1230,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "w11-settings"
+version = "0.1.0"
+dependencies = [
+ "gtk4",
+ "libc",
+ "w11-common",
+]
+
+[[package]]
 name = "w11-start"
 version = "0.1.0"
 dependencies = [
