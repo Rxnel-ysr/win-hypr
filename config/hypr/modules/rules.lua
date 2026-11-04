@@ -37,9 +37,11 @@ try(hl.window_rule, {
 
 -- Frosted-glass ("acrylic") for the Rust shell's layer surfaces.
 -- The click-catcher (w11-scrim) is deliberately NOT blurred.
-try(hl.layer_rule, {
-  name  = "w11-shell-blur",
-  match = { namespace = "w11-(taskbar|start|quick|calendar|toast|taskview)" },
-  blur  = true,
-  ignore_alpha = 0.25,
-})
+if LITE == false then
+  try(hl.layer_rule, {
+    name  = "w11-shell-blur",
+    match = { namespace = "w11-(taskbar|start|quick|calendar|toast|taskview)" },
+    blur  = true,
+    ignore_alpha = 0.25,
+  })
+end

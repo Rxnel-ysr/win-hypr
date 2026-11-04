@@ -17,7 +17,7 @@ exec(Win .. " + W",         "w11-flyout calendar")       -- Widgets
 exec(Win .. " + Tab",       "w11-flyout taskview")       -- Task View
 exec("ALT + Tab",           "w11ctl alt-tab")            -- Quick switch
 exec(Win .. " + E",         "w11-explorer")              -- File Explorer
-exec(Win .. " + I",         "gnome-control-center || systemsettings")  -- Settings
+exec(Win .. " + I",         "<SETTINGS_CMD>")  -- Settings
 exec(Win .. " + L",         "w11ctl lock")               -- Lock
 exec(Win .. " + D",         "w11ctl show-desktop")       -- Show / restore desktop
 exec(Win .. " + M",         "w11ctl show-desktop")       -- Minimize all

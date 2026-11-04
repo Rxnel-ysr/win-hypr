@@ -1,5 +1,8 @@
 -- Animations: Fluent motion (decelerate in, accelerate out) -----------------
-hl.config({ animations = { enabled = false } })
+local lite = (LITE ~= false) -- defined in look.lua
+
+hl.config({ animations = { enabled = not lite } })
+if lite then return end
 
 hl.curve("fluentDecel", { type = "bezier", points = { { 0.1, 0.9 }, { 0.2, 1.0 } } })
 hl.curve("fluentAccel", { type = "bezier", points = { { 0.7, 0.0 }, { 1.0, 0.5 } } })
