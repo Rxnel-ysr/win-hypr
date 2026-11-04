@@ -13,3 +13,4 @@ hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 
 -- The Rust shell finds its sibling binaries here (see install.sh)
 hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
+hl.env("XCURSOR_THEME", "Bibata-Modern-Ice")

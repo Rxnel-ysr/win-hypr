@@ -2,6 +2,10 @@
 
 use std::process::{Command, Stdio};
 
+/// Keep in sync with config/hypr/modules/binds.lua.
+pub const TERMINAL: &str = "foot";
+pub const SETTINGS_CMD: &str = "foot -e nmtui";
+
 /// Run a shell command and capture trimmed stdout.
 pub fn sh(cmd: &str) -> String {
     Command::new("sh")

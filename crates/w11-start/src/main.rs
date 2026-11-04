@@ -244,7 +244,7 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
     user.connect_clicked({
         let hide = hide.clone();
         move |_| {
-            sys::spawn("gnome-control-center user-accounts || true");
+            sys::spawn("sys::SETTINGS_CMD");
             hide();
         }
     });

@@ -264,7 +264,7 @@ fn quick(app: &gtk::Application) -> Rc<Popup> {
     settings.connect_clicked({
         let p = popup.clone();
         move |_| {
-            sys::spawn("gnome-control-center || systemsettings || true");
+            sys::spawn("sys::SETTINGS_CMD");
             p.hide();
         }
     });
