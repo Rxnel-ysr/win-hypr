@@ -23,6 +23,13 @@ Rust (this repo): taskbar, Start, Quick Settings, notification center, toasts, T
 Rust (recommended extras): `wpaperd` (wallpaper), `satty` + `wayshot` (Snipping Tool), `regreet`/`tuigreet` (login screen), `bottom` (Task Manager).
 Not Rust and not replaceable here: the compositor (Hyprland, C++), `hyprlock`, `hypridle`, PipeWire, NetworkManager. Rewriting those would be separate multi-year projects.
 
+## Photos
+
+Ram usage
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/0dbc79a9-c7cc-4604-8bcb-0120f9cc36af" />
+
+
 ## Dependencies
 Build: Rust ≥ 1.87, `gtk4`, `gtk4-layer-shell` (≥ 1.0), `pkg-config`.
 Runtime: `wireplumber` (wpctl), `brightnessctl`, `networkmanager` (nmcli), `bluez-utils`, `power-profiles-daemon`, `playerctl`, `hyprsunset`, `hyprlock`, `hypridle`, `cliphist`, `wl-clipboard`, `slurp`, `grim` (or `wayshot`), `curl` (weather).
