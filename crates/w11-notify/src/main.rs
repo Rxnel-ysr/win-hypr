@@ -49,6 +49,8 @@ impl Server {
             self.next_id += 1;
             self.next_id
         };
+        let summary: String = summary.chars().take(200).collect();
+        let body: String = body.chars().take(1000).collect();
         let time = glib::real_time() / 1_000_000;
         let n = StoredNotification {
             id,
@@ -77,6 +79,9 @@ impl Server {
 }
 
 fn main() -> glib::ExitCode {
+    if std::env::var_os("GSK_RENDERER").is_none() {
+        std::env::set_var("GSK_RENDERER", "cairo");
+    }
     let app = gtk::Application::builder()
         .application_id("dev.win11hypr.Notify")
         .build();
@@ -162,16 +167,12 @@ fn build(app: &gtk::Application) {
                     let click_toasts = toasts.clone();
                     let click_stack = stack.clone();
                     let click_window = window.clone();
-                    let click_widget = card_w.clone();
+                    let click_weak = card_w.downgrade();
                     let gesture = gtk::GestureClick::new();
                     gesture.connect_released(move |_, _, _, _| {
-                        dismiss(
-                            &click_toasts,
-                            &click_stack,
-                            &click_window,
-                            id,
-                            &click_widget,
-                        );
+                        if let Some(w) = click_weak.upgrade() {
+                            dismiss(&click_toasts, &click_stack, &click_window, id, &w);
+                        }
                     });
                     card_w.add_controller(gesture);
                     glib::timeout_add_local_once(Duration::from_millis(ms), move || {

@@ -127,7 +127,10 @@ fn unique_child(dir: &gio::File, name: &str, suffix: &str) -> gio::File {
 }
 
 fn copy_recursive(src: &gio::File, dst: &gio::File) -> Result<(), glib::Error> {
-    let t = src.query_file_type(gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS, gio::Cancellable::NONE);
+    let t = src.query_file_type(
+        gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+        gio::Cancellable::NONE,
+    );
     if t == gio::FileType::Directory {
         dst.make_directory_with_parents(gio::Cancellable::NONE)?;
         let en = src.enumerate_children(
@@ -226,7 +229,11 @@ impl Explorer {
         let c_paste = flat_button("edit-paste-symbolic", None, "command-button");
         let c_rename = flat_button("document-edit-symbolic", None, "command-button");
         let c_delete = flat_button("user-trash-symbolic", None, "command-button");
-        let c_term = flat_button("utilities-terminal-symbolic", Some("Terminal"), "command-button");
+        let c_term = flat_button(
+            "utilities-terminal-symbolic",
+            Some("Terminal"),
+            "command-button",
+        );
         for (b, tip) in [
             (&c_cut, "Cut (Ctrl+X)"),
             (&c_copy, "Copy (Ctrl+C)"),
@@ -422,10 +429,7 @@ impl Explorer {
                     .path()
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_else(|| glib::home_dir().to_string_lossy().to_string());
-                sys::spawn(&format!(
-                    "cd {} && (xdg-terminal-exec || kitty || foot || alacritty || wezterm || konsole)",
-                    quote(&path)
-                ));
+                sys::spawn(&format!("cd {} && exec {}", quote(&path), sys::TERMINAL));
             });
 
             let e = ex.clone();
@@ -606,7 +610,8 @@ impl Explorer {
         if en.is_dir {
             self.navigate(en.file.clone(), true);
         } else {
-            let _ = gio::AppInfo::launch_default_for_uri(&en.file.uri(), gio::AppLaunchContext::NONE);
+            let _ =
+                gio::AppInfo::launch_default_for_uri(&en.file.uri(), gio::AppLaunchContext::NONE);
         }
     }
 
@@ -615,6 +620,7 @@ impl Explorer {
     fn reload(self: &Rc<Self>) {
         let cwd = self.nav.borrow().cwd.clone();
         let mut entries = Vec::new();
+        let mut kinds: std::collections::HashMap<String, String> = Default::default();
         let attrs = "standard::name,standard::display-name,standard::type,standard::size,\
                      standard::icon,standard::content-type,standard::is-hidden,time::modified";
         match cwd.enumerate_children(attrs, gio::FileQueryInfoFlags::NONE, gio::Cancellable::NONE) {
@@ -624,7 +630,14 @@ impl Explorer {
                         "File folder".to_string()
                     } else {
                         info.content_type()
-                            .map(|c| gio::content_type_get_description(&c).to_string())
+                            .map(|c| {
+                                kinds
+                                    .entry(c.to_string())
+                                    .or_insert_with(|| {
+                                        gio::content_type_get_description(&c).to_string()
+                                    })
+                                    .clone()
+                            })
                             .unwrap_or_else(|| "File".into())
                     };
                     entries.push(Entry {
@@ -632,14 +645,19 @@ impl Explorer {
                         name: info.display_name().to_string(),
                         is_dir: info.file_type() == gio::FileType::Directory,
                         size: info.size(),
-                        modified: info.modification_date_time().map(|d| d.to_unix()).unwrap_or(0),
+                        modified: info
+                            .modification_date_time()
+                            .map(|d| d.to_unix())
+                            .unwrap_or(0),
                         kind,
                         icon: info.icon(),
                         hidden: info.is_hidden() || info.name().to_string_lossy().starts_with('.'),
                     });
                 }
             }
-            Err(e) => self.status.set_text(&format!("Can't open this folder: {}", e.message())),
+            Err(e) => self
+                .status
+                .set_text(&format!("Can't open this folder: {}", e.message())),
         }
         self.nav.borrow_mut().entries = entries;
 
@@ -656,7 +674,8 @@ impl Explorer {
             .filter(|b| !b.is_empty() && b != "/")
             .unwrap_or_else(|| "This PC".into());
         self.tab.set_text(&title);
-        self.win.set_title(Some(&format!("{title} - File Explorer")));
+        self.win
+            .set_title(Some(&format!("{title} - File Explorer")));
         self.btn_back.set_sensitive(!n.back.is_empty());
         self.btn_fwd.set_sensitive(!n.fwd.is_empty());
         self.btn_up.set_sensitive(cwd.parent().is_some());
@@ -683,10 +702,17 @@ impl Explorer {
                 let ord = match key {
                     SortKey::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
                     SortKey::Modified => a.modified.cmp(&b.modified),
-                    SortKey::Kind => a.kind.cmp(&b.kind).then(a.name.to_lowercase().cmp(&b.name.to_lowercase())),
+                    SortKey::Kind => a
+                        .kind
+                        .cmp(&b.kind)
+                        .then(a.name.to_lowercase().cmp(&b.name.to_lowercase())),
                     SortKey::Size => a.size.cmp(&b.size),
                 };
-                if n.ascending { ord } else { ord.reverse() }
+                if n.ascending {
+                    ord
+                } else {
+                    ord.reverse()
+                }
             });
             (v, n.sort, n.ascending)
         };
@@ -715,7 +741,10 @@ impl Explorer {
         let sel = self.list.selected_rows().len();
         let mut s = format!("{total} item{}", if total == 1 { "" } else { "s" });
         if sel > 0 {
-            s.push_str(&format!("    |    {sel} item{} selected", if sel == 1 { "" } else { "s" }));
+            s.push_str(&format!(
+                "    |    {sel} item{} selected",
+                if sel == 1 { "" } else { "s" }
+            ));
         }
         self.status.set_text(&s);
     }
@@ -744,7 +773,8 @@ impl Explorer {
         n.clipboard = sel.into_iter().map(|e| e.file).collect();
         n.cut = cut;
         drop(n);
-        self.status.set_text(if cut { "Ready to move" } else { "Copied" });
+        self.status
+            .set_text(if cut { "Ready to move" } else { "Copied" });
     }
 
     fn paste(self: &Rc<Self>) {
@@ -753,7 +783,10 @@ impl Explorer {
             (n.clipboard.clone(), n.cut, n.cwd.clone())
         };
         for src in clip {
-            let name = src.basename().map(|b| b.to_string_lossy().to_string()).unwrap_or_default();
+            let name = src
+                .basename()
+                .map(|b| b.to_string_lossy().to_string())
+                .unwrap_or_default();
             let same_dir = src.parent().map(|p| p.equal(&cwd)).unwrap_or(false);
             let dst = if same_dir && !cut {
                 unique_child(&cwd, &name, " - Copy")
@@ -782,7 +815,12 @@ impl Explorer {
             Ok(()) => {
                 self.reload();
                 // select the new folder
-                let idx = self.nav.borrow().visible.iter().position(|e| e.file.equal(&f));
+                let idx = self
+                    .nav
+                    .borrow()
+                    .visible
+                    .iter()
+                    .position(|e| e.file.equal(&f));
                 if let Some(i) = idx {
                     if let Some(row) = self.list.row_at_index(i as i32) {
                         self.list.select_row(Some(&row));
@@ -800,7 +838,13 @@ impl Explorer {
         if sel.is_empty() {
             return;
         }
-        let in_trash = self.nav.borrow().cwd.uri_scheme().map(|s| s == "trash").unwrap_or(false);
+        let in_trash = self
+            .nav
+            .borrow()
+            .cwd
+            .uri_scheme()
+            .map(|s| s == "trash")
+            .unwrap_or(false);
         if in_trash {
             let dialog = gtk::AlertDialog::builder()
                 .message("Permanently delete these items?")
@@ -821,7 +865,11 @@ impl Explorer {
         } else {
             for s in &sel {
                 if let Err(err) = s.file.trash(gio::Cancellable::NONE) {
-                    self.error(&format!("Couldn't move {} to the Recycle Bin: {}", s.name, err.message()));
+                    self.error(&format!(
+                        "Couldn't move {} to the Recycle Bin: {}",
+                        s.name,
+                        err.message()
+                    ));
                 }
             }
             self.reload();
@@ -830,7 +878,9 @@ impl Explorer {
 
     fn rename_dialog(self: &Rc<Self>) {
         let sel = self.selected();
-        let Some(target) = sel.first().cloned() else { return };
+        let Some(target) = sel.first().cloned() else {
+            return;
+        };
         let dlg = gtk::Window::builder()
             .transient_for(&self.win)
             .modal(true)
@@ -865,7 +915,8 @@ impl Explorer {
         dlg.set_child(Some(&v));
 
         let do_rename = {
-            let (e, dlg, entry, target) = (self.clone(), dlg.clone(), entry.clone(), target.clone());
+            let (e, dlg, entry, target) =
+                (self.clone(), dlg.clone(), entry.clone(), target.clone());
             Rc::new(move || {
                 let new = entry.text().to_string();
                 if !new.is_empty() && new != target.name {
@@ -899,17 +950,41 @@ impl Explorer {
         let have_sel = !self.selected().is_empty();
         type Action = Box<dyn Fn(&Rc<Explorer>)>;
         let items: Vec<(&str, bool, Action)> = vec![
-            ("Open", have_sel, Box::new(|e: &Rc<Explorer>| {
-                if let Some(s) = e.selected().first().cloned() {
-                    e.open(&s);
-                }
-            })),
-            ("Cut", have_sel, Box::new(|e: &Rc<Explorer>| e.set_clipboard(true))),
-            ("Copy", have_sel, Box::new(|e: &Rc<Explorer>| e.set_clipboard(false))),
+            (
+                "Open",
+                have_sel,
+                Box::new(|e: &Rc<Explorer>| {
+                    if let Some(s) = e.selected().first().cloned() {
+                        e.open(&s);
+                    }
+                }),
+            ),
+            (
+                "Cut",
+                have_sel,
+                Box::new(|e: &Rc<Explorer>| e.set_clipboard(true)),
+            ),
+            (
+                "Copy",
+                have_sel,
+                Box::new(|e: &Rc<Explorer>| e.set_clipboard(false)),
+            ),
             ("Paste", true, Box::new(|e: &Rc<Explorer>| e.paste())),
-            ("Rename", have_sel, Box::new(|e: &Rc<Explorer>| e.rename_dialog())),
-            ("Delete", have_sel, Box::new(|e: &Rc<Explorer>| e.delete_selected())),
-            ("New folder", true, Box::new(|e: &Rc<Explorer>| e.new_folder())),
+            (
+                "Rename",
+                have_sel,
+                Box::new(|e: &Rc<Explorer>| e.rename_dialog()),
+            ),
+            (
+                "Delete",
+                have_sel,
+                Box::new(|e: &Rc<Explorer>| e.delete_selected()),
+            ),
+            (
+                "New folder",
+                true,
+                Box::new(|e: &Rc<Explorer>| e.new_folder()),
+            ),
         ];
         for (label, enabled, act) in items {
             let b = gtk::Button::with_label(label);
@@ -933,7 +1008,11 @@ impl Explorer {
         pop.popup();
     }
 
-    fn on_key(self: &Rc<Self>, key: gtk::gdk::Key, state: gtk::gdk::ModifierType) -> glib::Propagation {
+    fn on_key(
+        self: &Rc<Self>,
+        key: gtk::gdk::Key,
+        state: gtk::gdk::ModifierType,
+    ) -> glib::Propagation {
         use gtk::gdk::{Key, ModifierType as M};
         let typing = gtk::prelude::GtkWindowExt::focus(&self.win)
             .map(|w| w.is::<gtk::Text>() || w.is::<gtk::Editable>())
@@ -945,9 +1024,18 @@ impl Explorer {
 
         if alt {
             match key {
-                Key::Left => { self.go_back(); return stop; }
-                Key::Right => { self.go_forward(); return stop; }
-                Key::Up => { self.go_up(); return stop; }
+                Key::Left => {
+                    self.go_back();
+                    return stop;
+                }
+                Key::Right => {
+                    self.go_forward();
+                    return stop;
+                }
+                Key::Up => {
+                    self.go_up();
+                    return stop;
+                }
                 _ => {}
             }
         }
@@ -969,18 +1057,39 @@ impl Explorer {
                     self.win.close();
                     return stop;
                 }
-                Key::c | Key::C if !typing => { self.set_clipboard(false); return stop; }
-                Key::x | Key::X if !typing => { self.set_clipboard(true); return stop; }
-                Key::v | Key::V if !typing => { self.paste(); return stop; }
+                Key::c | Key::C if !typing => {
+                    self.set_clipboard(false);
+                    return stop;
+                }
+                Key::x | Key::X if !typing => {
+                    self.set_clipboard(true);
+                    return stop;
+                }
+                Key::v | Key::V if !typing => {
+                    self.paste();
+                    return stop;
+                }
                 _ => {}
             }
         }
         if !typing {
             match key {
-                Key::F2 => { self.rename_dialog(); return stop; }
-                Key::F5 => { self.reload(); return stop; }
-                Key::Delete => { self.delete_selected(); return stop; }
-                Key::BackSpace => { self.go_up(); return stop; }
+                Key::F2 => {
+                    self.rename_dialog();
+                    return stop;
+                }
+                Key::F5 => {
+                    self.reload();
+                    return stop;
+                }
+                Key::Delete => {
+                    self.delete_selected();
+                    return stop;
+                }
+                Key::BackSpace => {
+                    self.go_up();
+                    return stop;
+                }
                 _ => {}
             }
         }
@@ -1016,7 +1125,11 @@ fn make_row(e: &Entry) -> gtk::ListBoxRow {
     kind.set_xalign(0.0);
     kind.set_width_request(150);
     kind.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    let size = gtk::Label::new(Some(&if e.is_dir { String::new() } else { fmt_size(e.size) }));
+    let size = gtk::Label::new(Some(&if e.is_dir {
+        String::new()
+    } else {
+        fmt_size(e.size)
+    }));
     size.add_css_class("file-meta");
     size.set_xalign(1.0);
     size.set_width_request(90);
@@ -1032,6 +1145,7 @@ fn make_row(e: &Entry) -> gtk::ListBoxRow {
 
 fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::File>>>>) {
     let mut t = targets.borrow_mut();
+    let home = glib::home_dir();
     let heading = |text: &str| {
         let r = gtk::ListBoxRow::new();
         r.set_selectable(false);
@@ -1054,16 +1168,45 @@ fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::Fi
 
     sidebar.append(&heading("Quick access"));
     t.push(None);
-    let home = glib::home_dir();
     sidebar.append(&item("user-home-symbolic", "Home"));
     t.push(Some(gio::File::for_path(&home)));
+    if gio::Vfs::default()
+        .supported_uri_schemes()
+        .iter()
+        .any(|s| s.as_str() == "trash")
+    {
+        sidebar.append(&heading("Other"));
+        t.push(None);
+        sidebar.append(&item("user-trash-symbolic", "Recycle Bin"));
+        t.push(Some(gio::File::for_uri("trash:///")));
+    }
     let dirs = [
-        (glib::UserDirectory::Desktop, "user-desktop-symbolic", "Desktop"),
-        (glib::UserDirectory::Documents, "folder-documents-symbolic", "Documents"),
-        (glib::UserDirectory::Downloads, "folder-download-symbolic", "Downloads"),
-        (glib::UserDirectory::Pictures, "folder-pictures-symbolic", "Pictures"),
+        (
+            glib::UserDirectory::Desktop,
+            "user-desktop-symbolic",
+            "Desktop",
+        ),
+        (
+            glib::UserDirectory::Documents,
+            "folder-documents-symbolic",
+            "Documents",
+        ),
+        (
+            glib::UserDirectory::Downloads,
+            "folder-download-symbolic",
+            "Downloads",
+        ),
+        (
+            glib::UserDirectory::Pictures,
+            "folder-pictures-symbolic",
+            "Pictures",
+        ),
         (glib::UserDirectory::Music, "folder-music-symbolic", "Music"),
-        (glib::UserDirectory::Videos, "folder-videos-symbolic", "Videos"),
+        (
+            glib::UserDirectory::Videos,
+            "folder-videos-symbolic",
+            "Videos",
+        ),
     ];
     for (d, icon, label) in dirs {
         if let Some(p) = glib::user_special_dir(d) {
@@ -1079,7 +1222,11 @@ fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::Fi
     t.push(Some(gio::File::for_path("/")));
     for m in gio::VolumeMonitor::get().mounts() {
         let root = m.root();
-        if root.path().map(|p| p == std::path::Path::new("/")).unwrap_or(false) {
+        if root
+            .path()
+            .map(|p| p == std::path::Path::new("/"))
+            .unwrap_or(false)
+        {
             continue;
         }
         sidebar.append(&item("drive-removable-media-symbolic", &m.name()));

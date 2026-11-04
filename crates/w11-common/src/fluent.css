@@ -10,7 +10,6 @@
 @define-color text_primary #ffffff;
 @define-color text_secondary rgba(255, 255, 255, 0.78);
 @define-color text_tertiary rgba(255, 255, 255, 0.55);
-@import "taskview.css"
 
 * {
   font-family: "Segoe UI Variable", "Segoe UI", "Selawik", "Inter", "Noto Sans", sans-serif;

@@ -25,6 +25,10 @@ struct State {
 type Shared = Rc<RefCell<State>>;
 
 fn main() -> glib::ExitCode {
+    // Static bar: cairo avoids creating a GL context (tens of MB RSS on an iGPU).
+    if std::env::var_os("GSK_RENDERER").is_none() {
+        std::env::set_var("GSK_RENDERER", "cairo");
+    }
     let app = gtk::Application::builder()
         .application_id("dev.win11hypr.Taskbar")
         .build();
@@ -232,30 +236,28 @@ fn build(app: &gtk::Application) {
     });
     // Safety net in case an event is missed; cheap now because unchanged state is ignored.
     let st = state.clone();
-    glib::timeout_add_seconds_local(15, move || {
+    glib::timeout_add_seconds_local(60, move || {
         refresh_clients(&st);
         glib::ControlFlow::Continue
     });
 
     // clock
-    let update_clock = {
-        let (time_l, date_l) = (time_l.clone(), date_l.clone());
-        move || {
-            if let Ok(now) = glib::DateTime::now_local() {
+    fn clock_tick(time_l: gtk::Label, date_l: gtk::Label) {
+        let wait = match glib::DateTime::now_local() {
+            Ok(now) => {
                 if let Ok(t) = now.format("%-I:%M %p") {
                     time_l.set_text(&t);
                 }
                 if let Ok(d) = now.format("%-m/%-d/%Y") {
                     date_l.set_text(&d);
                 }
+                (60 - now.second()).max(1) as u32
             }
-        }
-    };
-    update_clock();
-    glib::timeout_add_seconds_local(10, move || {
-        update_clock();
-        glib::ControlFlow::Continue
-    });
+            Err(_) => 30,
+        };
+        glib::timeout_add_seconds_local_once(wait, move || clock_tick(time_l, date_l));
+    }
+    clock_tick(time_l.clone(), date_l.clone());
 
     // tray status (polls CLI tools off the main thread)
     let poll_tray = move || {
@@ -267,8 +269,8 @@ fn build(app: &gtk::Application) {
             })
             .await;
             if let Ok((net, vol, bat)) = res {
-                net_icon.set_icon_name(Some(net));
-                vol_icon.set_icon_name(Some(vol));
+                set_icon(&net_icon, net);
+                set_icon(&vol_icon, vol);
                 match bat {
                     Some(b) => {
                         bat_icon.set_icon_name(Some(&sys::battery_icon(b)));
@@ -290,10 +292,8 @@ fn build(app: &gtk::Application) {
 fn refresh_weather(label: gtk::Label, loc: String) {
     glib::spawn_future_local(async move {
         let res = gio::spawn_blocking(move || {
-            sys::sh(&format!(
-                "curl -s --max-time 6 'https://wttr.in/{}?format=%t'",
-                loc.replace(' ', "+")
-            ))
+            let url = format!("https://wttr.in/{}?format=%t", loc.replace(' ', "+"));
+            sys::run("curl", &["-sf", "--max-time", "6", url.as_str()])
         })
         .await;
         if let Ok(t) = res {
@@ -303,6 +303,13 @@ fn refresh_weather(label: gtk::Label, loc: String) {
             }
         }
     });
+}
+
+/// Only touch the widget when the icon actually changes.
+fn set_icon(img: &gtk::Image, name: &str) {
+    if img.icon_name().as_deref() != Some(name) {
+        img.set_icon_name(Some(name));
+    }
 }
 
 fn windows_logo() -> gtk::Grid {

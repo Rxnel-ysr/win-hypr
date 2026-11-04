@@ -1,5 +1,7 @@
 -- Look & feel: Windows 11 (dark) -------------------------------------------
 -- Rounded 8px windows, hairline border, big soft shadow, "acrylic" blur.
+LITE = true
+
 hl.config({
   general = {
     gaps_in = 0,
@@ -22,14 +24,14 @@ hl.config({
     inactive_opacity = 1.0,
 
     shadow = {
-      enabled = true,
+      enabled = not LITE,
       range = 28,
       render_power = 3,
       color = 0x66000000,
     },
 
     blur = {
-      enabled = true,
+      enabled = not LITE,
       size = 8,
       passes = 3,
       noise = 0.02,
