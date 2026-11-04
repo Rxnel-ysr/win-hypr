@@ -247,6 +247,7 @@ fn refresh(items: Items, flow: gtk::FlowBox, pop: gtk::Popover, sig: Rc<RefCell<
 pub fn attach(items: Items, flow: &gtk::FlowBox, pop: &gtk::Popover) {
     // Icons only live in the overflow popover: fetch (IconPixmap can be large) only while
     // it is open, and drop the widgets/textures when it closes.
+    let sig = Rc::new(RefCell::new(String::from("?")));
     {
         let (i, f, p, s) = (items.clone(), flow.clone(), pop.clone(), sig.clone());
         pop.connect_show(move |_| refresh(i.clone(), f.clone(), p.clone(), s.clone()));

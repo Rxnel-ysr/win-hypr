@@ -10,6 +10,9 @@ use w11_common::popup::{run_popup, Placement, Popup};
 use w11_common::{apps, sys};
 
 fn main() -> glib::ExitCode {
+    if std::env::var_os("GSK_RENDERER").is_none() {
+        std::env::set_var("GSK_RENDERER", "cairo");
+    }
     run_popup("dev.win11hypr.Start", build)
 }
 

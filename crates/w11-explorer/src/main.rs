@@ -1145,6 +1145,7 @@ fn make_row(e: &Entry) -> gtk::ListBoxRow {
 
 fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::File>>>>) {
     let mut t = targets.borrow_mut();
+    let home = glib::home_dir();
     let heading = |text: &str| {
         let r = gtk::ListBoxRow::new();
         r.set_selectable(false);
@@ -1166,6 +1167,9 @@ fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::Fi
     };
 
     sidebar.append(&heading("Quick access"));
+    t.push(None);
+    sidebar.append(&item("user-home-symbolic", "Home"));
+    t.push(Some(gio::File::for_path(&home)));
     if gio::Vfs::default()
         .supported_uri_schemes()
         .iter()

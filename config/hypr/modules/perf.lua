@@ -14,5 +14,5 @@ else
     set({ decoration = { blur = { enabled = true, xray = true, passes = 2, size = 5, noise = 0, vibrancy = 0, popups = false }, shadow = { enabled = true, range = 14, render_power = 2 } } })
 end
 
-set({ misc = { vfr = true, animate_manual_resizes = false, animate_mouse_windowdragging = false } })
+set({ misc = { animate_manual_resizes = false, animate_mouse_windowdragging = false } })
 set({ ecosystem = { no_update_news = true,  no_donation_nag = true } })

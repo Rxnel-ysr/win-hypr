@@ -1,10 +1,15 @@
 //! System integration through the usual Linux CLI tools (wpctl, brightnessctl, nmcli, ...).
 
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
+use std::time::Instant;
 
 /// Keep in sync with config/hypr/modules/binds.lua.
 pub const TERMINAL: &str = "foot";
 pub const SETTINGS_CMD: &str = "foot -e nmtui";
+
+/// Cache for bluetooth_enabled(): (when checked, value)
+static BT: Mutex<Option<(Instant, bool)>> = Mutex::new(None);
 
 /// Run a shell command and capture trimmed stdout.
 pub fn sh(cmd: &str) -> String {
@@ -251,6 +256,7 @@ pub fn bluetooth_enabled() -> bool {
 }
 
 pub fn set_bluetooth(on: bool) {
+    *BT.lock().unwrap() = None;
     spawn(&format!(
         "bluetoothctl power {}",
         if on { "on" } else { "off" }

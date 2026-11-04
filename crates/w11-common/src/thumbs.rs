@@ -20,7 +20,7 @@ pub fn path_for(addr: &str) -> PathBuf {
 }
 
 /// Layer-shell surfaces that would end up *in* the screenshot.
-const OVERLAYS: [&str; 5] = [
+const OVERLAYS: [&str; 6] = [
     "w11-start",
     "w11-quick",
     "w11-calendar",

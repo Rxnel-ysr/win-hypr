@@ -15,6 +15,9 @@ use w11_common::popup::{run_popup, Placement, Popup};
 use w11_common::sys;
 
 fn main() -> glib::ExitCode {
+    if std::env::var_os("GSK_RENDERER").is_none() {
+        std::env::set_var("GSK_RENDERER", "cairo");
+    }
     match std::env::args().nth(1).as_deref() {
         Some("quick") => run_popup("dev.win11hypr.QuickSettings", quick),
         Some("calendar") => run_popup("dev.win11hypr.Calendar", calendar),
