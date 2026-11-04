@@ -26,6 +26,7 @@ const OVERLAYS: [&str; 5] = [
     "w11-calendar",
     "w11-taskview",
     "w11-scrim",
+    "w11-toast",
 ];
 
 fn overlay_open() -> bool {
