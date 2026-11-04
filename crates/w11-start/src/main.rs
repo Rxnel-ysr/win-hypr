@@ -244,7 +244,7 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
     user.connect_clicked({
         let hide = hide.clone();
         move |_| {
-            sys::spawn("sys::SETTINGS_CMD");
+            sys::spawn(sys::SETTINGS_CMD);
             hide();
         }
     });

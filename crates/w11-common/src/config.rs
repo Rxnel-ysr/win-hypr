@@ -23,9 +23,7 @@ impl Default for Config {
                 "org.mozilla.firefox.desktop",
                 "chromium.desktop",
                 "google-chrome.desktop",
-                "kitty.desktop",
-                "Alacritty.desktop",
-                "org.wezfurlong.wezterm.desktop",
+                "foot.desktop",
                 "code.desktop",
                 "visual-studio-code.desktop",
                 "discord.desktop",
@@ -35,7 +33,7 @@ impl Default for Config {
                 "nm-connection-editor.desktop",
                 "blueman-manager.desktop",
                 "mpv.desktop",
-                "org.gnome.Loupe.desktop",
+                "imv.desktop",
             ]
             .map(String::from)
             .to_vec(),

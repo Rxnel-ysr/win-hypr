@@ -264,7 +264,7 @@ fn quick(app: &gtk::Application) -> Rc<Popup> {
     settings.connect_clicked({
         let p = popup.clone();
         move |_| {
-            sys::spawn("sys::SETTINGS_CMD");
+            sys::spawn(sys::SETTINGS_CMD);
             p.hide();
         }
     });

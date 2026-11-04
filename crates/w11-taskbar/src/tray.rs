@@ -245,12 +245,29 @@ fn refresh(items: Items, flow: gtk::FlowBox, pop: gtk::Popover, sig: Rc<RefCell<
 
 /// Fill `flow` (inside `pop`) with tray icons and keep it fresh.
 pub fn attach(items: Items, flow: &gtk::FlowBox, pop: &gtk::Popover) {
-    let sig = Rc::new(RefCell::new(String::from("?")));
-    let (i, f, p, s) = (items.clone(), flow.clone(), pop.clone(), sig.clone());
-    refresh(i, f, p, s);
+    // Icons only live in the overflow popover: fetch (IconPixmap can be large) only while
+    // it is open, and drop the widgets/textures when it closes.
+    {
+        let (i, f, p, s) = (items.clone(), flow.clone(), pop.clone(), sig.clone());
+        pop.connect_show(move |_| refresh(i.clone(), f.clone(), p.clone(), s.clone()));
+    }
+    {
+        let (f, s) = (flow.clone(), sig.clone());
+        pop.connect_closed(move |_| {
+            let (f, s) = (f.clone(), s.clone());
+            glib::idle_add_local_once(move || {
+                while let Some(c) = f.first_child() {
+                    f.remove(&c);
+                }
+                *s.borrow_mut() = String::from("?");
+            });
+        });
+    }
     let (f, p) = (flow.clone(), pop.clone());
     glib::timeout_add_seconds_local(10, move || {
-        refresh(items.clone(), f.clone(), p.clone(), sig.clone());
+        if p.is_visible() {
+            refresh(items.clone(), f.clone(), p.clone(), sig.clone());
+        }
         glib::ControlFlow::Continue
     });
 }

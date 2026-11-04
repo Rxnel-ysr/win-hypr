@@ -17,6 +17,34 @@ pub fn sh(cmd: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Run a program directly (no `sh -c`): one fork/exec instead of two.
+pub fn run(prog: &str, args: &[&str]) -> String {
+    Command::new(prog)
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+/// Is a process with this `comm` running? Reads /proc, forks nothing (comm is max 15 chars).
+pub fn process_running(comm: &str) -> bool {
+    std::fs::read_dir("/proc")
+        .into_iter()
+        .flatten()
+        .flatten()
+        .any(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .chars()
+                .all(|c| c.is_ascii_digit())
+                && std::fs::read_to_string(e.path().join("comm"))
+                    .map(|c| c.trim() == comm)
+                    .unwrap_or(false)
+        })
+}
+
 /// Spawn a command detached; a helper thread reaps it so we never leave zombies.
 pub fn spawn(cmd: &str) {
     if let Ok(mut child) = Command::new("sh")
@@ -36,7 +64,7 @@ pub fn spawn(cmd: &str) {
 // ---------------------------------------------------------------- audio
 
 pub fn volume() -> (f64, bool) {
-    let out = sh("wpctl get-volume @DEFAULT_AUDIO_SINK@");
+    let out = run("wpctl", &["get-volume", "@DEFAULT_AUDIO_SINK@"]);
     let v = out
         .split_whitespace()
         .nth(1)
@@ -136,10 +164,23 @@ pub fn set_wifi(on: bool) {
 }
 
 pub fn wifi_ssid() -> Option<String> {
-    sh("nmcli -t -f ACTIVE,SSID dev wifi")
-        .lines()
-        .find_map(|l| l.strip_prefix("yes:").map(str::to_string))
-        .filter(|s| !s.is_empty())
+    // `--rescan no`: don't trigger a radio scan every time Quick Settings opens
+    run(
+        "nmcli",
+        &[
+            "-t",
+            "-f",
+            "ACTIVE,SSID",
+            "dev",
+            "wifi",
+            "list",
+            "--rescan",
+            "no",
+        ],
+    )
+    .lines()
+    .find_map(|l| l.strip_prefix("yes:").map(str::to_string))
+    .filter(|s| !s.is_empty())
 }
 
 fn rd(p: &std::path::Path) -> String {
@@ -199,10 +240,18 @@ pub fn network_icon() -> &'static str {
 }
 
 pub fn bluetooth_enabled() -> bool {
-    sh("bluetoothctl show").contains("Powered: yes")
+    if let Some((t, v)) = *BT.lock().unwrap() {
+        if t.elapsed() < std::time::Duration::from_secs(2) {
+            return v;
+        }
+    }
+    let v = run("bluetoothctl", &["show"]).contains("Powered: yes");
+    *BT.lock().unwrap() = Some((std::time::Instant::now(), v));
+    v
 }
 
 pub fn set_bluetooth(on: bool) {
+    *BT.lock().unwrap() = None;
     spawn(&format!(
         "bluetoothctl power {}",
         if on { "on" } else { "off" }
@@ -232,7 +281,7 @@ pub fn set_battery_saver(on: bool) {
 }
 
 pub fn night_light() -> bool {
-    !sh("pgrep -x hyprsunset").is_empty()
+    process_running("hyprsunset")
 }
 
 pub fn set_night_light(on: bool) {

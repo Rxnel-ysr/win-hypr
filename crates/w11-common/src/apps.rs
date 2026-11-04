@@ -3,9 +3,13 @@
 use gtk::gio;
 use gtk::prelude::*;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 thread_local! {
     static CACHE: RefCell<Option<Vec<gio::AppInfo>>> = const { RefCell::new(None) };
+    static BY_ID: RefCell<HashMap<String, Option<gio::AppInfo>>> = RefCell::new(HashMap::new());
+    static BY_CLASS: RefCell<HashMap<String, Option<gio::AppInfo>>> = RefCell::new(HashMap::new());
+
 }
 
 fn load() -> Vec<gio::AppInfo> {
@@ -26,10 +30,17 @@ pub fn all() -> Vec<gio::AppInfo> {
 /// Drop the cached application list so the next [`all`] call rescans.
 pub fn invalidate() {
     CACHE.with(|c| *c.borrow_mut() = None);
+    BY_ID.with(|m| m.borrow_mut().clear());
+    BY_CLASS.with(|m| m.borrow_mut().clear());
 }
 
 pub fn by_id(id: &str) -> Option<gio::AppInfo> {
-    gio::DesktopAppInfo::new(id).map(|d| d.upcast::<gio::AppInfo>())
+    if let Some(hit) = BY_ID.with(|m| m.borrow().get(id).cloned()) {
+        return hit;
+    }
+    let found = gio::DesktopAppInfo::new(id).map(|d| d.upcast::<gio::AppInfo>());
+    BY_ID.with(|m| m.borrow_mut().insert(id.to_string(), found.clone()));
+    found
 }
 
 pub fn desktop_id(a: &gio::AppInfo) -> String {
@@ -62,7 +73,24 @@ pub fn class_matches(a: &gio::AppInfo, class: &str) -> bool {
 }
 
 pub fn for_class(class: &str) -> Option<gio::AppInfo> {
-    all().into_iter().find(|a| class_matches(a, class))
+    if let Some(hit) = BY_CLASS.with(|m| m.borrow().get(class).cloned()) {
+        return hit;
+    }
+    let found = CACHE.with(|c| {
+        c.borrow_mut()
+            .get_or_insert_with(load)
+            .iter()
+            .find(|a| class_matches(a, class))
+            .cloned()
+    });
+    BY_CLASS.with(|m| {
+        let mut m = m.borrow_mut();
+        if m.len() >= 128 {
+            m.clear();
+        }
+        m.insert(class.to_string(), found.clone());
+    });
+    found
 }
 
 pub fn launch(a: &gio::AppInfo) {

@@ -4,7 +4,7 @@
 //! window becomes the active (= top-most, fully visible) window we grab its rectangle with
 //! `grim` and store a small JPEG in the session runtime dir. Task View just reads that cache.
 
-use crate::{desktops, hypr};
+use crate::{desktops, hypr, sys};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -55,11 +55,11 @@ pub fn capture_active() -> Option<String> {
     if w < 48 || h < 48 || overlay_open() {
         return None;
     }
-    let scale = (640.0 / w as f64).clamp(0.05, 1.0);
+    let scale = (480.0 / w as f64).clamp(0.05, 1.0);
     let dest = path_for(&c.address);
     let tmp = dest.with_extension("tmp.jpg");
     let ok = Command::new("grim")
-        .args(["-t", "jpeg", "-q", "85", "-s", &format!("{scale:.3}"), "-g"])
+        .args(["-t", "jpeg", "-q", "70", "-s", &format!("{scale:.3}"), "-g"])
         .arg(format!("{x0},{y0} {w}x{h}"))
         .arg(&tmp)
         .stdout(Stdio::null())
@@ -101,7 +101,7 @@ pub fn spawn_daemon() {
         hypr::listen_events(tx.clone());
         let ticker = tx.clone();
         std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_secs(45));
+            std::thread::sleep(Duration::from_secs(120));
             if ticker.send_blocking("tick".to_string()).is_err() {
                 break;
             }
@@ -111,6 +111,9 @@ pub fn spawn_daemon() {
             match ev.as_str() {
                 "closewindow" => gc(),
                 "activewindowv2" | "openwindow" | "movewindowv2" | "workspacev2" | "tick" => {
+                    if ev == "tick" && sys::process_running("hyprlock") {
+                        continue;
+                    }
                     // let the focus/raise animation finish and coalesce event bursts
                     std::thread::sleep(Duration::from_millis(350));
                     while rx.try_recv().is_ok() {}

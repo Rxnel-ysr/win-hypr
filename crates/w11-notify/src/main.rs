@@ -77,6 +77,9 @@ impl Server {
 }
 
 fn main() -> glib::ExitCode {
+    if std::env::var_os("GSK_RENDERER").is_none() {
+        std::env::set_var("GSK_RENDERER", "cairo");
+    }
     let app = gtk::Application::builder()
         .application_id("dev.win11hypr.Notify")
         .build();
