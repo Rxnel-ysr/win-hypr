@@ -251,7 +251,6 @@ pub fn bluetooth_enabled() -> bool {
 }
 
 pub fn set_bluetooth(on: bool) {
-    *BT.lock().unwrap() = None;
     spawn(&format!(
         "bluetoothctl power {}",
         if on { "on" } else { "off" }

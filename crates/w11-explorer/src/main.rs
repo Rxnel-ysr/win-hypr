@@ -620,6 +620,7 @@ impl Explorer {
     fn reload(self: &Rc<Self>) {
         let cwd = self.nav.borrow().cwd.clone();
         let mut entries = Vec::new();
+        let mut kinds: std::collections::HashMap<String, String> = Default::default();
         let attrs = "standard::name,standard::display-name,standard::type,standard::size,\
                      standard::icon,standard::content-type,standard::is-hidden,time::modified";
         match cwd.enumerate_children(attrs, gio::FileQueryInfoFlags::NONE, gio::Cancellable::NONE) {
@@ -629,7 +630,14 @@ impl Explorer {
                         "File folder".to_string()
                     } else {
                         info.content_type()
-                            .map(|c| gio::content_type_get_description(&c).to_string())
+                            .map(|c| {
+                                kinds
+                                    .entry(c.to_string())
+                                    .or_insert_with(|| {
+                                        gio::content_type_get_description(&c).to_string()
+                                    })
+                                    .clone()
+                            })
                             .unwrap_or_else(|| "File".into())
                     };
                     entries.push(Entry {
@@ -1158,10 +1166,16 @@ fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::Fi
     };
 
     sidebar.append(&heading("Quick access"));
-    t.push(None);
-    let home = glib::home_dir();
-    sidebar.append(&item("user-home-symbolic", "Home"));
-    t.push(Some(gio::File::for_path(&home)));
+    if gio::Vfs::default()
+        .supported_uri_schemes()
+        .iter()
+        .any(|s| s.as_str() == "trash")
+    {
+        sidebar.append(&heading("Other"));
+        t.push(None);
+        sidebar.append(&item("user-trash-symbolic", "Recycle Bin"));
+        t.push(Some(gio::File::for_uri("trash:///")));
+    }
     let dirs = [
         (
             glib::UserDirectory::Desktop,

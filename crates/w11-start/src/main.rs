@@ -241,13 +241,9 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
     ub.append(&gtk::Label::new(Some(&name)));
     user.set_child(Some(&ub));
     user.set_valign(gtk::Align::Center);
-    user.connect_clicked({
-        let hide = hide.clone();
-        move |_| {
-            sys::spawn(sys::SETTINGS_CMD);
-            hide();
-        }
-    });
+    // No accounts page in a Hyprland-only session: the pill is a pure label.
+    user.set_can_target(false);
+    user.set_focusable(false);
     footer.set_start_widget(Some(&user));
 
     let power = gtk::MenuButton::new();
@@ -295,6 +291,17 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
             stack.set_visible_child_name("home");
             search.grab_focus();
             fill_recommended(&rec, hide.clone());
+        });
+    }
+
+    // Free the large All-apps list when the menu closes; rebuilt on demand.
+    {
+        let (all_list, all_built) = (all_list.clone(), all_built.clone());
+        popup.window.connect_hide(move |_| {
+            while let Some(c) = all_list.first_child() {
+                all_list.remove(&c);
+            }
+            all_built.set(false);
         });
     }
     popup
