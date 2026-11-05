@@ -1,5 +1,5 @@
-pub const CSS: &str = include_str!("fluent.css");
-pub const TASKVIEW_CSS: &str = include_str!("taskview.css");
+pub const CSS: &str = include_str!("css/fluent.css");
+pub const TASKVIEW_CSS: &str = include_str!("css/taskview.css");
 
 /// Install the Fluent (Windows 11 dark) stylesheet, plus `~/.config/win11-hypr/user.css` if present.
 pub fn apply() {

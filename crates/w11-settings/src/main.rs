@@ -15,6 +15,7 @@ use w11_common::{apps, hypr, sys, theme};
 
 type Win = gtk::ApplicationWindow;
 type Build = fn(&Win) -> gtk::Box;
+pub const CSS: &str = include_str!("css/setting.css");
 
 const PAGES: &[(&str, &str, &str, Build)] = &[
     ("system", "computer-symbolic", "System", page_system),
@@ -74,8 +75,6 @@ const IDLE_OPTS: [(&str, u32); 10] = [
     ("Never", 0),
 ];
 
-pub const CSS: &str = include_str!("setting.css");
-
 // ------------------------------------------------------------------ main
 
 fn main() -> glib::ExitCode {
@@ -123,7 +122,6 @@ fn build(app: &gtk::Application, start: Option<&str>) {
     header.set_show_title_buttons(false);
     header.set_title_widget(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
     let brand = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    brand.append(&icon_img("preferences-system-symbolic", 16));
     brand.append(&text("Settings", "s-appname"));
     header.pack_start(&brand);
     let caption = |icon: &str, extra: &str| {
