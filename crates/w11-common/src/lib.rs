@@ -2,6 +2,7 @@
 
 pub mod apps;
 pub mod config;
+pub mod css;
 pub mod desktops;
 pub mod hypr;
 pub mod popup;

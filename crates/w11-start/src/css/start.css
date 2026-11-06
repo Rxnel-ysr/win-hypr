@@ -1,0 +1,78 @@
+/* Start menu only. Shared tokens (@accent, @layer_3, @stroke, ...), .flyout,
+   .flyout-body, .section-title and .link-button stay in w11-common/fluent.css. */
+
+.start-search {
+  min-height: 36px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid @stroke;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.35);
+  padding: 0 14px;
+  color: @text_primary;
+}
+.start-search:focus-within { border-bottom-color: @accent; background: rgba(0, 0, 0, 0.25); }
+.start-search text { color: @text_primary; }
+
+.pin-tile {
+  border-radius: 6px;
+  padding: 10px 4px 6px 4px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+}
+.pin-tile:hover { background: @layer_3; }
+.pin-label { font-size: 12px; color: @text_primary; }
+
+.rec-row {
+  border-radius: 6px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+}
+.rec-row:hover { background: @layer_3; }
+.rec-title { font-size: 12px; }
+.rec-sub { font-size: 11px; color: @text_tertiary; }
+
+.app-row {
+  border-radius: 6px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+}
+.app-row:hover { background: @layer_3; }
+
+.start-footer {
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid @stroke;
+  padding: 0 28px;
+  min-height: 64px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.user-pill {
+  border-radius: 4px;
+  padding: 4px 12px 4px 6px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+}
+.user-pill:hover { background: @layer_3; }
+.avatar {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 16px;
+  background: @accent;
+  color: #000;
+  font-weight: 600;
+}
+.power-button {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+}
+.power-button:hover { background: @layer_3; }
