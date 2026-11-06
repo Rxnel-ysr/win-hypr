@@ -22,7 +22,6 @@ mod keys;
 mod layout;
 mod strip;
 
-use crate::mem;
 use gtk::gdk;
 use gtk::gio;
 use gtk::glib;
@@ -32,6 +31,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 use w11_common::hypr::{self, Client};
+use w11_common::mem;
 use w11_common::popup::{Placement, Popup};
 use w11_common::{apps, desktops, thumbs};
 

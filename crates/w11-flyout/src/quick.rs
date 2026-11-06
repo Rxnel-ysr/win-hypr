@@ -5,7 +5,6 @@
 //! refresh. Sliders are guarded while the UI is being synced, so refreshing never re-applies the
 //! values it just read (which used to fork `wpctl` / `brightnessctl` on every open).
 
-use crate::mem;
 use gtk::gio;
 use gtk::glib;
 use gtk::prelude::*;
@@ -13,6 +12,7 @@ use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 use w11_common::config;
+use w11_common::mem;
 use w11_common::popup::{Placement, Popup};
 use w11_common::sys;
 

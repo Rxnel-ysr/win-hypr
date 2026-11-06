@@ -3,12 +3,12 @@
 //! The card list is rebuilt every time the flyout opens and dropped when it closes, so a closed
 //! flyout holds no per-notification widgets.
 
-use crate::mem;
 use gtk::gdk;
 use gtk::glib;
 use gtk::prelude::*;
 use std::rc::Rc;
 use w11_common::config::{self, StoredNotification};
+use w11_common::mem;
 use w11_common::popup::{Placement, Popup};
 
 /// The history keeps 60 entries; only the newest ones are worth building widgets for.

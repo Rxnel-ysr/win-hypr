@@ -8,7 +8,6 @@
 //! one only loads the stylesheet it needs (`src/css/<flyout>.css`).
 
 mod calendar;
-mod mem;
 mod quick;
 mod taskview;
 
@@ -16,6 +15,7 @@ use gtk::glib;
 use w11_common::popup::run_popup;
 
 fn main() -> glib::ExitCode {
+    w11_common::mem::tune(w11_common::mem::Profile::Transient);
     // Static flyouts: cairo avoids creating a GL context (tens of MB RSS on an iGPU).
     if std::env::var_os("GSK_RENDERER").is_none() {
         std::env::set_var("GSK_RENDERER", "cairo");
