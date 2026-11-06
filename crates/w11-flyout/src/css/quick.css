@@ -1,0 +1,21 @@
+/* Quick Settings flyout (Win+A). Loaded only by `w11-flyout quick`.
+   Shared rules (.flyout, .start-footer, .power-button, .nav-button, scale) stay in fluent.css. */
+
+.quick-body { padding: 20px; }
+
+.quick-tile {
+  min-height: 48px;
+  border-radius: 4px;
+  background: @layer_3;
+  border: 1px solid @stroke;
+  color: @text_primary;
+  padding: 6px 10px;
+}
+.quick-tile:hover { background: rgba(255, 255, 255, 0.09); }
+.quick-tile.on {
+  background: @accent;
+  color: #000;
+  border-color: transparent;
+}
+.quick-tile-label { font-size: 12px; font-weight: 600; }
+.quick-tile-caption { font-size: 11px; opacity: 0.8; }
