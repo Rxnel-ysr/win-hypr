@@ -5,6 +5,7 @@ pub mod config;
 pub mod css;
 pub mod desktops;
 pub mod hypr;
+pub mod mem;
 pub mod popup;
 pub mod sys;
 pub mod theme;

@@ -1,0 +1,72 @@
+/* Taskbar styles. Loaded only by w11-taskbar (see w11_common::load_css! in main.rs).
+   Shared tokens (@accent, @layer_1, @stroke, @text_primary, ...), popover and .menu-item
+   stay in w11-common/fluent.css. */
+
+.taskbar {
+  background: @layer_1;
+  border-top: 1px solid @stroke;
+  color: @text_primary;
+  padding: 0 12px;
+}
+
+/* ---- app buttons ------------------------------------------------- */
+.tb-button {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  margin: 0 2px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+  transition: background 120ms ease;
+}
+.tb-button:hover { background: rgba(255, 255, 255, 0.07); }
+.tb-button:active { background: rgba(255, 255, 255, 0.04); }
+
+.tb-indicator {
+  min-height: 3px;
+  min-width: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+  margin-bottom: 1px;
+  transition: min-width 150ms ease;
+}
+.tb-indicator.active {
+  min-width: 16px;
+  background: @accent;
+}
+
+.win-logo-pane {
+  min-width: 9px;
+  min-height: 9px;
+  border-radius: 1px;
+  background: @accent;
+}
+
+/* ---- tray cluster ------------------------------------------------ */
+.tray-button {
+  padding: 0 8px;
+  min-height: 40px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: @text_primary;
+}
+.tray-button:hover { background: rgba(255, 255, 255, 0.07); }
+.tray-button image { margin: 0 4px; }
+
+.tb-clock-time,
+.tb-clock-date { font-size: 12px; color: @text_primary; }
+
+.tb-weather-temp { font-size: 12px; }
+
+.tb-show-desktop {
+  min-width: 6px;
+  margin-left: 4px;
+  border: none;
+  border-left: 1px solid @stroke;
+  border-radius: 0;
+  background: transparent;
+}
+.tb-show-desktop:hover { background: rgba(255, 255, 255, 0.12); }

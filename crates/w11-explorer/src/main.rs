@@ -59,6 +59,7 @@ struct Explorer {
 }
 
 fn main() -> glib::ExitCode {
+    w11_common::mem::tune(w11_common::mem::Profile::Transient);
     let app = gtk::Application::builder()
         .application_id("dev.win11hypr.Explorer")
         .flags(gio::ApplicationFlags::NON_UNIQUE)
@@ -1236,4 +1237,5 @@ fn build_sidebar(sidebar: &gtk::ListBox, targets: &Rc<RefCell<Vec<Option<gio::Fi
     t.push(None);
     sidebar.append(&item("user-trash-symbolic", "Recycle Bin"));
     t.push(Some(gio::File::for_uri("trash:///")));
+    w11_common::mem::keep_trimmed(60, 4096);
 }

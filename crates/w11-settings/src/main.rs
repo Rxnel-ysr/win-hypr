@@ -81,6 +81,7 @@ fn main() -> glib::ExitCode {
     if std::env::var_os("GSK_RENDERER").is_none() {
         std::env::set_var("GSK_RENDERER", "cairo");
     }
+    w11_common::mem::tune(w11_common::mem::Profile::Transient);
     let app = gtk::Application::builder()
         .application_id("dev.win11hypr.Settings")
         .build();
@@ -227,8 +228,8 @@ fn build(app: &gtk::Application, start: Option<&str>) {
             content.set_child(Some(&build(&win)));
             content.vadjustment().set_value(0.0);
             // hand freed pages back to the OS
-            glib::idle_add_local_once(|| unsafe {
-                libc::malloc_trim(0);
+            glib::idle_add_local_once(|| {
+                w11_common::mem::trim_soon();
             });
         });
     }
@@ -243,6 +244,7 @@ fn build(app: &gtk::Application, start: Option<&str>) {
         .unwrap_or(0);
     nav.select_row(nav.row_at_index(idx as i32).as_ref());
     win.present();
+    w11_common::mem::keep_trimmed(60, 4096);
 }
 
 // --------------------------------------------------------------- helpers
@@ -575,6 +577,18 @@ fn page_system(win: &Win) -> gtk::Box {
     let b = button("More sound settings", false);
     b.connect_clicked(|_| sys::spawn("pavucontrol"));
     add_ctl(&r, &b);
+    c.append(&r);
+    p.append(&c);
+
+    // ---- Performance
+    heading(&p, "Performance");
+    let c = card();
+    let (r, _) = row(
+        "applications-system-symbolic",
+        "X11 app compatibility (XWayland)",
+        "Turn off to save RAM. X11-only apps (some games, Steam, older tools) won't open while off",
+    );
+    add_ctl(&r, &switch(sys::xwayland_enabled(), sys::set_xwayland));
     c.append(&r);
     p.append(&c);
 

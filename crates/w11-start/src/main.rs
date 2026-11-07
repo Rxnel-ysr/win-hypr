@@ -17,6 +17,7 @@ use crate::ctx::{Ctx, HideFn};
 use crate::index::AppCache;
 
 fn main() -> glib::ExitCode {
+    w11_common::mem::tune(w11_common::mem::Profile::Transient);
     if std::env::var_os("GSK_RENDERER").is_none() {
         std::env::set_var("GSK_RENDERER", "cairo");
     }
@@ -99,6 +100,6 @@ fn build(app: &gtk::Application) -> Rc<Popup> {
             ctx.cache.clear();
         });
     }
-
+    w11_common::mem::keep_trimmed(60, 4096);
     popup
 }

@@ -6,8 +6,6 @@ edition.workspace = true
 [dependencies]
 gtk.workspace = true
 gtk4-layer-shell.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 async-channel.workspace = true
 w11-common.workspace = true
 zbus.workspace = true

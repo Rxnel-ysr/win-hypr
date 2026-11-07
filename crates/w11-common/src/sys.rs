@@ -321,3 +321,50 @@ pub fn user_name() -> String {
         n
     }
 }
+
+// ------------------------------------------------------------- xwayland
+
+fn xwayland_flag() -> std::path::PathBuf {
+    crate::config::config_dir().join("xwayland-off")
+}
+
+/// The user's choice (flag file absent = enabled). This is what modules/xwayland.lua applies.
+pub fn xwayland_enabled() -> bool {
+    !xwayland_flag().exists()
+}
+
+/// Persist the choice and reload the Hyprland config so it takes effect now.
+/// Persist the choice and apply it. Enabling also (re)starts the X11 compatibility layer
+pub fn set_xwayland(on: bool) {
+    let flag = xwayland_flag();
+    if on {
+        let _ = std::fs::remove_file(&flag);
+    } else {
+        let _ = std::fs::write(&flag, b"1");
+    }
+    let notify =
+        |m: &str| format!("notify-send -a Xwayland -i dialog-information-symbolic Xwayland '{m}'");
+    let script = if on {
+        let fail = notify("XWayland did not start. Log out and back in.");
+        let ok = notify("X11 compatibility enabled");
+        format!(
+            r#"
+            hyprctl reload
+            for _ in $(seq 40); do
+                d=$(ps -o args= -C Xwayland | grep -om1 ':[0-9]\+')
+                [ -n "$d" ] && break
+                sleep 0.25
+            done
+            [ -z "$d" ] && {{ {fail}; exit 0; }}
+            dbus-update-activation-environment --systemd DISPLAY="$d"
+            pkill -x w11-taskbar
+            pkill -x w11-start
+            DISPLAY="$d" setsid -f w11-taskbar
+            {ok}
+            "#
+        )
+    } else {
+        format!("hyprctl reload; {}", notify("X11 compatibility disabled"))
+    };
+    spawn(&script);
+}

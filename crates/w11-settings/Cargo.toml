@@ -6,4 +6,3 @@ edition.workspace = true
 [dependencies]
 gtk.workspace = true
 w11-common.workspace = true
-libc = "0.2"

@@ -1,0 +1,20 @@
+/* Toast notifications. Loaded only by w11-notify.
+   Tokens (@layer_2, @stroke, @text_*) come from w11-common/fluent.css.
+   The shared .notif-* rules stay in fluent.css: the calendar flyout and the tray overflow use them.
+
+   No box-shadow on purpose: the layer surface is exactly as big as the toasts, so the shadow
+   would be clipped anyway, and a 28px blur is expensive with the cairo renderer. */
+
+.toast {
+  background: @layer_2;
+  color: @text_primary;
+  border: 1px solid @stroke;
+  border-radius: 8px;
+  padding: 14px;
+  min-width: 340px;
+}
+.toast:hover { background: rgba(255, 255, 255, 0.09); }
+
+.toast-app     { font-size: 11px; color: @text_tertiary; }
+.toast-summary { font-weight: 600; }
+.toast-body    { font-size: 12px; color: @text_secondary; }
